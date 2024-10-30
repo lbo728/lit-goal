@@ -51,15 +51,25 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: _pages[_selectedIndex],
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         backgroundColor: Colors.blue,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(100.0),
         ),
         onPressed: () {},
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
+        label: const Row(
+          children: [
+            Icon(
+              Icons.add,
+              color: Colors.white,
+            ),
+            Text(
+              '추가하기',
+              style: TextStyle(
+                color: Colors.white,
+              ),
+            )
+          ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
