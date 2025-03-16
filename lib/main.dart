@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lit_goal/views/screens/book_list_screen.dart';
-import 'package:lit_goal/views/screens/calenda_screen%20copy.dart';
+import 'package:lit_goal/views/screens/calendar_screen.dart';
 import 'package:lit_goal/views/screens/home_screen.dart';
 
 void main() {
@@ -50,26 +50,14 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_selectedIndex],
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.blue,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(100.0),
-        ),
-        onPressed: () {},
-        label: const Row(
-          children: [
-            Icon(
-              Icons.add,
-              color: Colors.white,
-            ),
-            Text(
-              '추가하기',
-              style: TextStyle(
-                color: Colors.white,
-              ),
-            )
-          ],
+        onPressed: () {
+          // 추가 기능 구현
+        },
+        child: const Icon(
+          Icons.add,
+          color: Colors.white,
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(

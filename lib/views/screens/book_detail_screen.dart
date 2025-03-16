@@ -1,21 +1,28 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:lit_goal/views/screens/book_detail_screen.dart';
+import 'package:lit_goal/views/screens/reading_start_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class BookDetailScreen extends StatefulWidget {
+  final String title;
+  final int currentPage;
+  final int totalPages;
+  final String bookCode;
+  final String imageUrl;
+
+  const BookDetailScreen({
+    super.key,
+    required this.title,
+    required this.currentPage,
+    required this.totalPages,
+    required this.bookCode,
+    required this.imageUrl,
+  });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<BookDetailScreen> createState() => _BookDetailScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  int currentPage = 16;
-  int totalPages = 328;
-  String bookCode = "D-24";
-  String bookTitle = "개발자를 위한 생각의 정리";
-  String bookImageUrl = "assets/images/book-cover.jpg";
-
+class _BookDetailScreenState extends State<BookDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -26,40 +33,24 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.only(top: 24),
             child: Column(
               children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => BookDetailScreen(
-                          title: bookTitle,
-                          currentPage: currentPage,
-                          totalPages: totalPages,
-                          bookCode: bookCode,
-                          imageUrl: bookImageUrl,
-                        ),
-                      ),
-                    );
-                  },
-                  child: Container(
-                    width: 200,
-                    height: 280,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey[300]!),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        bookImageUrl,
-                        fit: BoxFit.cover,
-                      ),
+                Container(
+                  width: 200,
+                  height: 280,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      widget.imageUrl,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  bookTitle,
+                  widget.title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -67,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '$currentPage페이지 / $totalPages페이지',
+                  '${widget.currentPage}페이지 / ${widget.totalPages}페이지',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -75,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  bookCode,
+                  widget.bookCode,
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -120,6 +111,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                           icon: const Icon(Icons.book),
                                           onPressed: () {
                                             Navigator.pop(context);
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ReadingStartScreen(
+                                                  title: widget.title,
+                                                  totalPages: widget.totalPages,
+                                                  imageUrl: widget.imageUrl,
+                                                ),
+                                              ),
+                                            );
                                           },
                                         ),
                                         const Text('독서 시작'),
