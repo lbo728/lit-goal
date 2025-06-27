@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lit_goal/views/screens/book_list_screen.dart';
 import 'package:lit_goal/views/screens/calendar_screen.dart';
 import 'package:lit_goal/views/screens/home_screen.dart';
+import 'package:lit_goal/views/screens/reading_start_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -124,7 +125,18 @@ class _MainScreenState extends State<MainScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () {
+                              setState(() {
+                                _isDropdownOpen = false;
+                              });
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ReadingStartScreen(),
+                                ),
+                              );
+                            },
                             child: Container(
                               padding: const EdgeInsets.only(
                                 left: 12,
