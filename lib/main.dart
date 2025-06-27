@@ -36,11 +36,11 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _isDropdownOpen = false;
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const BookListScreen(),
-    const CalendarScreen(),
-  ];
+  List<Widget> get _pages => [
+        const HomeScreen(),
+        const BookListScreen(),
+        const CalendarScreen(),
+      ];
 
   void _onItemTapped(int index) {
     setState(() {

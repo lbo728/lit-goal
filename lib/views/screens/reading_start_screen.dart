@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../models/book.dart';
+import '../../services/book_service.dart';
 
 class ReadingStartScreen extends StatefulWidget {
   final String? title;
@@ -325,8 +327,16 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  // 독서 시작 로직 추가
-                  Navigator.pop(context);
+                  final book = Book(
+                    title: _titleController.text,
+                    startDate: selectedDate,
+                    targetDate: targetDate,
+                    imageUrl: widget.imageUrl,
+                    totalPages: widget.totalPages ?? 0,
+                  );
+
+                  BookService().addBook(book);
+                  Navigator.popUntil(context, (route) => route.isFirst);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,

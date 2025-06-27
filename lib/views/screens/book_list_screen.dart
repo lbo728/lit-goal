@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:lit_goal/views/screens/reading_progress_screen.dart';
+import '../../models/book.dart';
+import '../../services/book_service.dart';
 
-class BookListScreen extends StatelessWidget {
+class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
+
+  @override
+  State<BookListScreen> createState() => _BookListScreenState();
+}
+
+class _BookListScreenState extends State<BookListScreen> {
+  final BookService _bookService = BookService();
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,81 +29,51 @@ class BookListScreen extends StatelessWidget {
           style: TextStyle(color: Colors.black),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: _bookService.hasBooks ? _buildBookList() : _buildEmptyState(),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ReadingProgressScreen(),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 3,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.book,
-                      color: Colors.blue,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '진행중 완독',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '현재 읽고 있는 책들을 확인하세요',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.grey,
-                    size: 16,
-                  ),
-                ],
-              ),
+          Icon(
+            Icons.book_outlined,
+            size: 80,
+            color: Colors.grey,
+          ),
+          SizedBox(height: 16),
+          Text(
+            '아직 시작한 독서가 없습니다',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey,
             ),
           ),
-          const SizedBox(height: 16),
-          Container(
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookList() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 진행중인 독서 목록
+        ..._bookService.books.map((book) => _buildBookCard(book)),
+        const SizedBox(height: 16),
+        // 기존 메뉴들
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ReadingProgressScreen(),
+              ),
+            );
+          },
+          child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -109,12 +93,12 @@ class BookListScreen extends StatelessWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.blue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
+                    Icons.book,
+                    color: Colors.blue,
                     size: 30,
                   ),
                 ),
@@ -124,7 +108,7 @@ class BookListScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '완독한 책',
+                        '진행중 완독',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -132,7 +116,7 @@ class BookListScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '완독한 책들을 확인하세요',
+                        '현재 읽고 있는 책들을 확인하세요',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey,
@@ -148,6 +132,167 @@ class BookListScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 3,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '완독한 책',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '완독한 책들을 확인하세요',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.grey,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBookCard(Book book) {
+    final daysPassed = DateTime.now().difference(book.startDate).inDays;
+    final totalDays = book.targetDate.difference(book.startDate).inDays;
+    final progressPercentage =
+        totalDays > 0 ? (daysPassed / totalDays * 100).clamp(0, 100) : 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 3,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 60,
+            height: 80,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[300]!),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: book.imageUrl != null
+                  ? Image.asset(
+                      book.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[200],
+                          child: const Icon(
+                            Icons.book,
+                            size: 30,
+                            color: Colors.grey,
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: Colors.grey[200],
+                      child: const Icon(
+                        Icons.book,
+                        size: 30,
+                        color: Colors.grey,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  book.title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'D-${daysPassed + 1} (${progressPercentage.toStringAsFixed(0)}% 진행)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${book.currentPage}/${book.totalPages}페이지',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(
+            Icons.arrow_forward_ios,
+            color: Colors.grey,
+            size: 16,
           ),
         ],
       ),
