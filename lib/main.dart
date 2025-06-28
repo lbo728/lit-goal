@@ -78,23 +78,24 @@ class _MainScreenState extends State<MainScreen> {
             },
           ),
         ),
-        AnimatedOpacity(
-          opacity: _isDropdownOpen ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _isDropdownOpen = false;
-              });
-            },
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: const Color.fromRGBO(0, 0, 0, 0.3),
+        if (_isDropdownOpen)
+          AnimatedOpacity(
+            opacity: _isDropdownOpen ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isDropdownOpen = false;
+                });
+              },
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: const Color.fromRGBO(0, 0, 0, 0.3),
+              ),
             ),
           ),
-        ),
         Positioned(
           bottom: 108,
           right: 16,
@@ -165,7 +166,11 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () {
+                              setState(() {
+                                _isDropdownOpen = false;
+                              });
+                            },
                             child: Container(
                               padding: const EdgeInsets.only(
                                 left: 12,
