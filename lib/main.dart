@@ -55,6 +55,7 @@ class _MainScreenState extends State<MainScreen> {
         Scaffold(
           body: _pages[_selectedIndex],
           bottomNavigationBar: BottomNavigationBar(
+            backgroundColor: Colors.white,
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(CupertinoIcons.home),
