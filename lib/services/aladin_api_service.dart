@@ -1,29 +1,24 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/book.dart';
+import '../config/app_config.dart';
 
 class AladinApiService {
-  static const String _baseUrl =
-      'http://www.aladin.co.kr/ttb/api/ItemSearch.aspx';
-
-  // 알라딘 API 키 발급 방법:
-  // 1. https://blog.aladin.co.kr/openapi/popup/6695306 에서 API 키 발급 신청
-  // 2. 아래 _ttbKey에 발급받은 키를 입력
-  static const String _ttbKey = 'ttbextreme930934002'; // 실제 API 키로 교체 필요
-
   static Future<List<BookSearchResult>> searchBooks(String query) async {
     if (query.trim().isEmpty) return [];
 
+    AppConfig.validateApiKeys();
+
     try {
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: {
-        'ttbkey': _ttbKey,
+      final uri = Uri.parse(AppConfig.aladinBaseUrl).replace(queryParameters: {
+        'ttbkey': AppConfig.aladinApiKey,
         'Query': query,
         'QueryType': 'Title',
-        'MaxResults': '10',
+        'MaxResults': AppConfig.maxSearchResults.toString(),
         'start': '1',
         'SearchTarget': 'Book',
         'output': 'js',
-        'Version': '20131101',
+        'Version': AppConfig.apiVersion,
       });
 
       final response = await http.get(uri);
