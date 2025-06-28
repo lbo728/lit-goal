@@ -1,21 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lit_goal/views/screens/reading_start_screen.dart';
+import '../../models/book.dart';
+import '../widgets/book_image_widget.dart';
 
 class BookDetailScreen extends StatefulWidget {
-  final String title;
-  final int currentPage;
-  final int totalPages;
-  final String bookCode;
-  final String imageUrl;
+  final Book book;
 
   const BookDetailScreen({
     super.key,
-    required this.title,
-    required this.currentPage,
-    required this.totalPages,
-    required this.bookCode,
-    required this.imageUrl,
+    required this.book,
   });
 
   @override
@@ -27,6 +21,18 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          '독서 상세',
+          style: TextStyle(color: Colors.black),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -42,23 +48,34 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      widget.imageUrl,
-                      fit: BoxFit.cover,
+                    child: BookImageWidget(
+                      imageUrl: widget.book.imageUrl,
+                      iconSize: 80,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  widget.title,
+                  widget.book.title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
+                  textAlign: TextAlign.center,
                 ),
+                if (widget.book.author != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.book.author!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
-                  '${widget.currentPage}페이지 / ${widget.totalPages}페이지',
+                  '${widget.book.currentPage}페이지 / ${widget.book.totalPages}페이지',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -66,7 +83,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.bookCode,
+                  'D-${DateTime.now().difference(widget.book.startDate).inDays + 1} (${((widget.book.currentPage / widget.book.totalPages) * 100).toStringAsFixed(0)}% 진행)',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -116,9 +133,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     ReadingStartScreen(
-                                                  title: widget.title,
-                                                  totalPages: widget.totalPages,
-                                                  imageUrl: widget.imageUrl,
+                                                  title: widget.book.title,
+                                                  totalPages:
+                                                      widget.book.totalPages,
+                                                  imageUrl:
+                                                      widget.book.imageUrl,
                                                 ),
                                               ),
                                             );

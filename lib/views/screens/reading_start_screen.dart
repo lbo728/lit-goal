@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../models/book.dart';
 import '../../services/book_service.dart';
 import '../../services/aladin_api_service.dart';
+import '../widgets/book_image_widget.dart';
 
 class ReadingStartScreen extends StatefulWidget {
   final String? title;
@@ -308,44 +310,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: _selectedBook?.imageUrl != null
-                      ? Image.network(
-                          _selectedBook!.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
-                                Icons.book,
-                                size: 60,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                        )
-                      : widget.imageUrl != null
-                          ? Image.asset(
-                              widget.imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[200],
-                                  child: const Icon(
-                                    Icons.book,
-                                    size: 60,
-                                    color: Colors.grey,
-                                  ),
-                                );
-                              },
-                            )
-                          : Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
-                                Icons.book,
-                                size: 60,
-                                color: Colors.grey,
-                              ),
-                            ),
+                  child: BookImageWidget(
+                    imageUrl: _selectedBook?.imageUrl ?? widget.imageUrl,
+                    iconSize: 60,
+                  ),
                 ),
               ),
             ),

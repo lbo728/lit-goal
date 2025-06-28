@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lit_goal/views/screens/reading_progress_screen.dart';
 import '../../models/book.dart';
 import '../../services/book_service.dart';
+import 'book_detail_screen.dart';
+import '../widgets/book_image_widget.dart';
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
@@ -60,10 +62,8 @@ class _BookListScreenState extends State<BookListScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // 진행중인 독서 목록
         ..._bookService.books.map((book) => _buildBookCard(book)),
         const SizedBox(height: 16),
-        // 기존 메뉴들
         GestureDetector(
           onTap: () {
             Navigator.push(
@@ -205,96 +205,87 @@ class _BookListScreenState extends State<BookListScreen> {
     final progressPercentage =
         totalDays > 0 ? (daysPassed / totalDays * 100).clamp(0, 100) : 0;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 1),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BookDetailScreen(book: book),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 80,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
-              borderRadius: BorderRadius.circular(4),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 3,
+              offset: const Offset(0, 1),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: book.imageUrl != null
-                  ? Image.asset(
-                      book.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.book,
-                            size: 30,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
-                    )
-                  : Container(
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.book,
-                        size: 30,
-                        color: Colors.grey,
-                      ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 80,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[300]!),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: BookImageWidget(
+                  imageUrl: book.imageUrl,
+                  iconSize: 30,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'D-${daysPassed + 1} (${progressPercentage.toStringAsFixed(0)}% 진행)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${book.currentPage}/${book.totalPages}페이지',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  book.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'D-${daysPassed + 1} (${progressPercentage.toStringAsFixed(0)}% 진행)',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${book.currentPage}/${book.totalPages}페이지',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.grey,
+              size: 16,
             ),
-          ),
-          const Icon(
-            Icons.arrow_forward_ios,
-            color: Colors.grey,
-            size: 16,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

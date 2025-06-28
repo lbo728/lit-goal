@@ -4,6 +4,7 @@ import 'package:lit_goal/views/screens/book_detail_screen.dart';
 import 'package:lit_goal/views/screens/reading_start_screen.dart';
 import '../../models/book.dart';
 import '../../services/book_service.dart';
+import '../widgets/book_image_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -85,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final Book? latestBook = _bookService.latestBook;
     if (latestBook == null) return _buildEmptyContent();
 
-    // 진행 상황 계산 (시작일부터 현재까지의 일수)
     final daysPassed = DateTime.now().difference(latestBook.startDate).inDays;
     final totalDays =
         latestBook.targetDate.difference(latestBook.startDate).inDays;
@@ -102,14 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => BookDetailScreen(
-                      title: latestBook.title,
-                      currentPage: latestBook.currentPage,
-                      totalPages: latestBook.totalPages,
-                      bookCode: "D-${daysPassed + 1}",
-                      imageUrl:
-                          latestBook.imageUrl ?? 'assets/images/book-cover.jpg',
-                    ),
+                    builder: (context) => BookDetailScreen(book: latestBook),
                   ),
                 );
               },
@@ -122,29 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: latestBook.imageUrl != null
-                      ? Image.asset(
-                          latestBook.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
-                                Icons.book,
-                                size: 60,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.book,
-                            size: 60,
-                            color: Colors.grey,
-                          ),
-                        ),
+                  child: BookImageWidget(
+                    imageUrl: latestBook.imageUrl,
+                    iconSize: 60,
+                  ),
                 ),
               ),
             ),
