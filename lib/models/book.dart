@@ -14,11 +14,26 @@ class BookSearchResult {
   });
 
   factory BookSearchResult.fromJson(Map<String, dynamic> json) {
+    int? parsedPages;
+    final itemPage = json['subInfo']?['itemPage'];
+
+    if (itemPage != null) {
+      if (itemPage is int) {
+        parsedPages = itemPage;
+      } else if (itemPage is String) {
+        parsedPages = int.tryParse(itemPage);
+      } else {
+        parsedPages = int.tryParse(itemPage.toString());
+      }
+    }
+
+    print('📖 책 파싱 완료 - 제목: ${json['title']}, 페이지: $parsedPages');
+
     return BookSearchResult(
       title: json['title'] ?? '',
       author: json['author'] ?? '',
       imageUrl: json['cover'],
-      totalPages: int.tryParse(json['subInfo']?['itemPage']?.toString() ?? '0'),
+      totalPages: parsedPages,
       isbn: json['isbn'],
     );
   }
