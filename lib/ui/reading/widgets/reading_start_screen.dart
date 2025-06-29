@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../models/book.dart';
-import '../../services/book_service.dart';
-import '../../services/aladin_api_service.dart';
-import '../widgets/book_image_widget.dart';
+import '../../../domain/models/book.dart';
+import '../../../data/services/book_service.dart';
+import '../../../data/services/aladin_api_service.dart';
+import '../../core/ui/book_image_widget.dart';
 
 class ReadingStartScreen extends StatefulWidget {
   final String? title;
@@ -457,26 +457,30 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
 
                   try {
                     final result = await BookService().addBook(book);
-                    Navigator.pop(context);
+                    if (mounted) {
+                      Navigator.pop(context);
 
-                    if (result != null) {
-                      Navigator.popUntil(context, (route) => route.isFirst);
-                    } else {
+                      if (result != null) {
+                        Navigator.popUntil(context, (route) => route.isFirst);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('독서 정보 저장에 실패했습니다.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('독서 정보 저장에 실패했습니다.'),
+                        SnackBar(
+                          content: Text('오류가 발생했습니다: $e'),
                           backgroundColor: Colors.red,
                         ),
                       );
                     }
-                  } catch (e) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('오류가 발생했습니다: $e'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
                   }
                 },
                 style: ElevatedButton.styleFrom(

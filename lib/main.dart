@@ -2,11 +2,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lit_goal/views/screens/book_list_screen.dart';
-import 'package:lit_goal/views/screens/calendar_screen.dart';
-import 'package:lit_goal/views/screens/home_screen.dart';
-import 'package:lit_goal/views/screens/reading_start_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:lit_goal/ui/book/widgets/book_list_screen.dart';
+import 'package:lit_goal/ui/calendar/widgets/calendar_screen.dart';
+import 'package:lit_goal/ui/home/widgets/home_screen.dart';
+import 'package:lit_goal/ui/reading/widgets/reading_start_screen.dart';
 import 'package:lit_goal/config/app_config.dart';
+import 'package:lit_goal/data/repositories/book_repository.dart';
+import 'package:lit_goal/data/services/book_service.dart';
+import 'package:lit_goal/ui/home/view_model/home_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,13 +30,30 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '독서 분량 설정기',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.white,
+    return MultiProvider(
+      providers: [
+        Provider<BookService>(
+          create: (_) => BookService(),
+        ),
+        Provider<BookRepository>(
+          create: (context) => BookRepositoryImpl(
+            context.read<BookService>(),
+          ),
+        ),
+        ChangeNotifierProvider<HomeViewModel>(
+          create: (context) => HomeViewModel(
+            context.read<BookRepository>(),
+          ),
+        ),
+      ],
+      child: MaterialApp(
+        title: '독서 분량 설정기',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          scaffoldBackgroundColor: Colors.white,
+        ),
+        home: const MainScreen(),
       ),
-      home: const MainScreen(),
     );
   }
 }
