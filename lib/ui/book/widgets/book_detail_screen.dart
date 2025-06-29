@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:lit_goal/views/screens/reading_start_screen.dart';
-import '../../models/book.dart';
-import '../../services/book_service.dart';
-import '../widgets/book_image_widget.dart';
+import '../../reading/widgets/reading_start_screen.dart';
+import '../../../domain/models/book.dart';
+import '../../../data/services/book_service.dart';
+import '../../core/ui/book_image_widget.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -91,27 +91,33 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         setState(() {
           _currentBook = updatedBook;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('페이지가 업데이트되었습니다.'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('페이지가 업데이트되었습니다.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('페이지 업데이트에 실패했습니다.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('페이지 업데이트에 실패했습니다.'),
+          SnackBar(
+            content: Text('오류가 발생했습니다: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('오류가 발생했습니다: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
 

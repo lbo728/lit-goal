@@ -1,10 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:lit_goal/views/screens/book_detail_screen.dart';
-import 'package:lit_goal/views/screens/reading_start_screen.dart';
-import '../../models/book.dart';
-import '../../services/book_service.dart';
-import '../widgets/book_image_widget.dart';
+import 'package:provider/provider.dart';
+import '../../book/widgets/book_detail_screen.dart';
+import '../../reading/widgets/reading_start_screen.dart';
+import '../../../domain/models/book.dart';
+import '../../core/ui/book_image_widget.dart';
+import '../view_model/home_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,38 +14,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final BookService _bookService = BookService();
-  bool _isLoading = false;
-
   @override
   void initState() {
     super.initState();
-    _loadBooks();
-  }
-
-  Future<void> _loadBooks() async {
-    setState(() {
-      _isLoading = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HomeViewModel>().loadBooks();
     });
-
-    try {
-      await _bookService.fetchBooks();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('책 목록을 불러오는데 실패했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   @override
@@ -53,16 +27,34 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _bookService.hasBooks
-                ? _buildBookContent()
-                : _buildEmptyContent(),
+        child: Consumer<HomeViewModel>(
+          builder: (context, viewModel, child) {
+            if (viewModel.errorMessage != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(viewModel.errorMessage!),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                viewModel.clearError();
+              });
+            }
+
+            if (viewModel.isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return viewModel.hasBooks
+                ? _buildBookContent(viewModel)
+                : _buildEmptyContent(viewModel);
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildEmptyContent() {
+  Widget _buildEmptyContent(HomeViewModel viewModel) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -86,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context) => const ReadingStartScreen(),
                   ),
                 );
-                _loadBooks();
+                viewModel.loadBooks();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
@@ -117,15 +109,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBookContent() {
-    final Book? latestBook = _bookService.latestBook;
-    if (latestBook == null) return _buildEmptyContent();
+  Widget _buildBookContent(HomeViewModel viewModel) {
+    final Book? latestBook = viewModel.latestBook;
+    if (latestBook == null) return _buildEmptyContent(viewModel);
 
-    final daysPassed = DateTime.now().difference(latestBook.startDate).inDays;
-    final totalDays =
-        latestBook.targetDate.difference(latestBook.startDate).inDays;
-    final progressPercentage =
-        totalDays > 0 ? (daysPassed / totalDays * 100).clamp(0, 100) : 0;
+    final daysPassed = viewModel.getDaysPassed(latestBook);
+    final progressPercentage = viewModel.getProgressPercentage(latestBook);
 
     return SingleChildScrollView(
       child: Padding(
@@ -199,36 +188,88 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisCount: 3,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
+                  childAspectRatio: 1,
                 ),
-                itemCount: 4,
+                itemCount: 9,
                 itemBuilder: (context, index) {
-                  if (index == 3) {
-                    return GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            CupertinoIcons.add,
-                            color: Colors.blue,
-                            size: 30,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
                   return Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(8),
                     ),
                   );
                 },
               ),
             ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ReadingStartScreen(),
+                          ),
+                        );
+                        viewModel.loadBooks();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        '새 독서 시작',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                BookDetailScreen(book: latestBook),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[300],
+                        foregroundColor: Colors.black87,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text(
+                        '독서 현황',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),

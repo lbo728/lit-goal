@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:lit_goal/views/screens/reading_progress_screen.dart';
-import '../../models/book.dart';
-import '../../services/book_service.dart';
+import '../../reading/widgets/reading_progress_screen.dart';
+import '../../../domain/models/book.dart';
+import '../../../data/services/book_service.dart';
 import 'book_detail_screen.dart';
-import '../widgets/book_image_widget.dart';
+import '../../core/ui/book_image_widget.dart';
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
