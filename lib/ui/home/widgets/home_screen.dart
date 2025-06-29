@@ -1,25 +1,130 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as provider;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../book/widgets/book_detail_screen.dart';
 import '../../reading/widgets/reading_start_screen.dart';
 import '../../../domain/models/book.dart';
+import '../../../domain/models/book_image.dart';
 import '../../core/ui/book_image_widget.dart';
+import '../../core/ui/image_grid_widget.dart';
 import '../view_model/home_view_model.dart';
+import '../../book/view_model/book_images_provider.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final ImagePicker _imagePicker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<HomeViewModel>().loadBooks();
+      provider.Provider.of<HomeViewModel>(context, listen: false).loadBooks();
     });
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        final homeViewModel =
+            provider.Provider.of<HomeViewModel>(context, listen: false);
+        final latestBook = homeViewModel.latestBook;
+
+        if (latestBook?.id != null) {
+          // 로딩 표시
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('이미지를 업로드 중입니다...'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+
+          // Riverpod을 통해 이미지 추가
+          final imageNotifier =
+              ref.read(bookImagesProvider(latestBook!.id!).notifier);
+          await imageNotifier.addImage(File(image.path));
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('이미지가 추가되었습니다!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('이미지 추가 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteImage(BookImage image) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('이미지 삭제'),
+        content: const Text('이 이미지를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              '삭제',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final homeViewModel =
+          provider.Provider.of<HomeViewModel>(context, listen: false);
+      final latestBook = homeViewModel.latestBook;
+
+      if (latestBook?.id != null) {
+        final imageNotifier =
+            ref.read(bookImagesProvider(latestBook!.id!).notifier);
+        final success = await imageNotifier.deleteImage(image);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(success ? '이미지가 삭제되었습니다.' : '이미지 삭제에 실패했습니다.'),
+              backgroundColor: success ? Colors.green : Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -27,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Consumer<HomeViewModel>(
+        child: provider.Consumer<HomeViewModel>(
           builder: (context, viewModel, child) {
             if (viewModel.errorMessage != null) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -171,9 +276,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.grey[600],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(
+              height: 16,
+            ),
             const Text(
-              '오늘 메모',
+              '인상깊은 내용',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
@@ -181,25 +288,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Container(
               padding: const EdgeInsets.all(16),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 1,
-                ),
-                itemCount: 9,
-                itemBuilder: (context, index) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  );
-                },
-              ),
+              child: latestBook.id != null
+                  ? ImageGridWidget(
+                      bookId: latestBook.id,
+                      bookTitle: latestBook.title,
+                      totalPages: latestBook.totalPages,
+                      bookImageUrl: latestBook.imageUrl,
+                      imagesAsync:
+                          ref.watch(bookImagesProvider(latestBook.id!)),
+                      onPickImage: _pickImage,
+                      onDeleteImage: _deleteImage,
+                    )
+                  : const SizedBox.shrink(),
             ),
             const SizedBox(height: 16),
             Row(

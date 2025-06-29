@@ -9,6 +9,7 @@ import '../../../domain/models/book.dart';
 import '../../../domain/models/book_image.dart';
 import '../../../data/services/book_service.dart';
 import '../../core/ui/book_image_widget.dart';
+import '../../core/ui/image_grid_widget.dart';
 import '../view_model/book_images_provider.dart';
 
 class BookDetailScreen extends ConsumerStatefulWidget {
@@ -150,66 +151,6 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     }
   }
 
-  Future<void> _showImageSourceDialog() async {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        height: 120,
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Column(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.camera_alt),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.camera);
-                  },
-                ),
-                const Text('카메라'),
-              ],
-            ),
-            Column(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.photo_library),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _pickImage(ImageSource.gallery);
-                  },
-                ),
-                const Text('갤러리'),
-              ],
-            ),
-            Column(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.book),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ReadingStartScreen(
-                          title: _currentBook.title,
-                          totalPages: _currentBook.totalPages,
-                          imageUrl: _currentBook.imageUrl,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const Text('독서 시작'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? image = await _imagePicker.pickImage(
@@ -220,7 +161,6 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
       );
 
       if (image != null && _currentBook.id != null) {
-        // 로딩 표시
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -229,8 +169,6 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
             ),
           );
         }
-
-        // Riverpod을 통해 이미지 추가
         final imageNotifier =
             ref.read(bookImagesProvider(_currentBook.id!).notifier);
         await imageNotifier.addImage(File(image.path));
@@ -565,121 +503,14 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
 
     final imagesAsync = ref.watch(bookImagesProvider(_currentBook.id!));
 
-    return imagesAsync.when(
-      data: (images) {
-        final totalItems = images.length + 1;
-        const maxDisplayItems = 6;
-        final displayItems =
-            totalItems > maxDisplayItems ? maxDisplayItems : totalItems;
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: displayItems,
-          itemBuilder: (context, index) {
-            if (index == images.length ||
-                (totalItems > maxDisplayItems &&
-                    index == maxDisplayItems - 1)) {
-              return GestureDetector(
-                onTap: _showImageSourceDialog,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        CupertinoIcons.add,
-                        color: Colors.blue,
-                        size: 24,
-                      ),
-                      if (totalItems > maxDisplayItems &&
-                          index == maxDisplayItems - 1)
-                        Text(
-                          '+${totalItems - maxDisplayItems}',
-                          style: const TextStyle(
-                            color: Colors.blue,
-                            fontSize: 12,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
-            // 이미지 아이템
-            final image = images[index];
-            return GestureDetector(
-              onLongPress: () => _deleteImage(image),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Stack(
-                    children: [
-                      CachedNetworkImage(
-                        imageUrl: image.imageUrl,
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.error,
-                            color: Colors.red,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: GestureDetector(
-                          onTap: () => _deleteImage(image),
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-      loading: () => const Center(
-        child: CircularProgressIndicator(),
-      ),
-      error: (error, stack) => Center(
-        child: Text('이미지 로드 실패: $error'),
-      ),
+    return ImageGridWidget(
+      bookId: _currentBook.id,
+      bookTitle: _currentBook.title,
+      totalPages: _currentBook.totalPages,
+      bookImageUrl: _currentBook.imageUrl,
+      imagesAsync: imagesAsync,
+      onPickImage: _pickImage,
+      onDeleteImage: _deleteImage,
     );
   }
 
