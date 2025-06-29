@@ -2,7 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as provider;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lit_goal/ui/book/widgets/book_list_screen.dart';
 import 'package:lit_goal/ui/calendar/widgets/calendar_screen.dart';
 import 'package:lit_goal/ui/home/widgets/home_screen.dart';
@@ -22,7 +23,11 @@ Future<void> main() async {
     anonKey: AppConfig.supabaseAnonKey,
   );
 
-  runApp(const MyApp());
+  runApp(
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -30,17 +35,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
+    return provider.MultiProvider(
       providers: [
-        Provider<BookService>(
+        provider.Provider<BookService>(
           create: (_) => BookService(),
         ),
-        Provider<BookRepository>(
+        provider.Provider<BookRepository>(
           create: (context) => BookRepositoryImpl(
             context.read<BookService>(),
           ),
         ),
-        ChangeNotifierProvider<HomeViewModel>(
+        provider.ChangeNotifierProvider<HomeViewModel>(
           create: (context) => HomeViewModel(
             context.read<BookRepository>(),
           ),
