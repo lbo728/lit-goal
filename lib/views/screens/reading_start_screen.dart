@@ -27,7 +27,9 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
   int _currentPage = 0;
 
   DateTime selectedDate = DateTime.now();
-  DateTime targetDate = DateTime.now().add(const Duration(days: 14));
+  DateTime targetDate = DateTime.now().add(const Duration(
+    days: 14,
+  ));
 
   List<BookSearchResult> _searchResults = [];
   bool _isSearching = false;
@@ -364,8 +366,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 }
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey[300]!),
                   borderRadius: BorderRadius.circular(8),
@@ -406,8 +410,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 }
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey[300]!),
                   borderRadius: BorderRadius.circular(8),
@@ -419,7 +425,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                       '${targetDate.year}년 ${targetDate.month}월 ${targetDate.day}일',
                       style: const TextStyle(fontSize: 16),
                     ),
-                    const Icon(Icons.calendar_today, size: 20),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
@@ -428,7 +437,7 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final book = Book(
                     title: _titleController.text,
                     author: _selectedBook?.author,
@@ -438,21 +447,54 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                     totalPages:
                         _selectedBook?.totalPages ?? widget.totalPages ?? 0,
                   );
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
 
-                  BookService().addBook(book);
-                  Navigator.popUntil(context, (route) => route.isFirst);
+                  try {
+                    final result = await BookService().addBook(book);
+                    Navigator.pop(context);
+
+                    if (result != null) {
+                      Navigator.popUntil(context, (route) => route.isFirst);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('독서 정보 저장에 실패했습니다.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('오류가 발생했습니다: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: const Text(
                   '독서 시작',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),

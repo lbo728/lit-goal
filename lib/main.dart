@@ -1,13 +1,23 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lit_goal/views/screens/book_list_screen.dart';
 import 'package:lit_goal/views/screens/calendar_screen.dart';
 import 'package:lit_goal/views/screens/home_screen.dart';
 import 'package:lit_goal/views/screens/reading_start_screen.dart';
+import 'package:lit_goal/config/app_config.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   await dotenv.load(fileName: ".env");
+
+  await Supabase.initialize(
+    url: AppConfig.supabaseUrl,
+    anonKey: AppConfig.supabaseAnonKey,
+  );
+
   runApp(const MyApp());
 }
 

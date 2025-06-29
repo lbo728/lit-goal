@@ -15,14 +15,49 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final BookService _bookService = BookService();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBooks();
+  }
+
+  Future<void> _loadBooks() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _bookService.fetchBooks();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('책 목록을 불러오는데 실패했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child:
-            _bookService.hasBooks ? _buildBookContent() : _buildEmptyContent(),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _bookService.hasBooks
+                ? _buildBookContent()
+                : _buildEmptyContent(),
       ),
     );
   }
@@ -51,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     builder: (context) => const ReadingStartScreen(),
                   ),
                 );
-                setState(() {});
+                _loadBooks();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,

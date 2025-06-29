@@ -14,10 +14,37 @@ class BookListScreen extends StatefulWidget {
 
 class _BookListScreenState extends State<BookListScreen> {
   final BookService _bookService = BookService();
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _loadBooks();
+  }
+
+  Future<void> _loadBooks() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _bookService.fetchBooks();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('책 목록을 불러오는데 실패했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -31,7 +58,11 @@ class _BookListScreenState extends State<BookListScreen> {
           style: TextStyle(color: Colors.black),
         ),
       ),
-      body: _bookService.hasBooks ? _buildBookList() : _buildEmptyState(),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _bookService.hasBooks
+              ? _buildBookList()
+              : _buildEmptyState(),
     );
   }
 

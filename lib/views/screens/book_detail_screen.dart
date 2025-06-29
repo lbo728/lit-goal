@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lit_goal/views/screens/reading_start_screen.dart';
 import '../../models/book.dart';
+import '../../services/book_service.dart';
 import '../widgets/book_image_widget.dart';
 
 class BookDetailScreen extends StatefulWidget {
@@ -17,6 +18,103 @@ class BookDetailScreen extends StatefulWidget {
 }
 
 class _BookDetailScreenState extends State<BookDetailScreen> {
+  final BookService _bookService = BookService();
+  late Book _currentBook;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentBook = widget.book;
+  }
+
+  Future<void> _showUpdatePageDialog() async {
+    final TextEditingController controller = TextEditingController(
+      text: _currentBook.currentPage.toString(),
+    );
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('현재 페이지 업데이트'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('총 ${_currentBook.totalPages} 페이지'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: '현재 페이지',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              final page = int.tryParse(controller.text);
+              if (page != null &&
+                  page >= 0 &&
+                  page <= _currentBook.totalPages) {
+                Navigator.pop(context, page);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('올바른 페이지 번호를 입력해주세요.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('업데이트'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && _currentBook.id != null) {
+      _updateCurrentPage(result);
+    }
+  }
+
+  Future<void> _updateCurrentPage(int newPage) async {
+    try {
+      final updatedBook =
+          await _bookService.updateCurrentPage(_currentBook.id!, newPage);
+      if (updatedBook != null) {
+        setState(() {
+          _currentBook = updatedBook;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('페이지가 업데이트되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('페이지 업데이트에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('오류가 발생했습니다: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,24 +147,24 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: BookImageWidget(
-                      imageUrl: widget.book.imageUrl,
+                      imageUrl: _currentBook.imageUrl,
                       iconSize: 80,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  widget.book.title,
+                  _currentBook.title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                if (widget.book.author != null) ...[
+                if (_currentBook.author != null) ...[
                   const SizedBox(height: 8),
                   Text(
-                    widget.book.author!,
+                    _currentBook.author!,
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey[600],
@@ -74,16 +172,29 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   ),
                 ],
                 const SizedBox(height: 8),
-                Text(
-                  '${widget.book.currentPage}페이지 / ${widget.book.totalPages}페이지',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
+                GestureDetector(
+                  onTap: _showUpdatePageDialog,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: Text(
+                      '${_currentBook.currentPage}페이지 / ${_currentBook.totalPages}페이지 (탭하여 업데이트)',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'D-${DateTime.now().difference(widget.book.startDate).inDays + 1} (${((widget.book.currentPage / widget.book.totalPages) * 100).toStringAsFixed(0)}% 진행)',
+                  'D-${DateTime.now().difference(_currentBook.startDate).inDays + 1} (${((_currentBook.currentPage / _currentBook.totalPages) * 100).toStringAsFixed(0)}% 진행)',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -133,11 +244,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                               MaterialPageRoute(
                                                 builder: (context) =>
                                                     ReadingStartScreen(
-                                                  title: widget.book.title,
+                                                  title: _currentBook.title,
                                                   totalPages:
-                                                      widget.book.totalPages,
+                                                      _currentBook.totalPages,
                                                   imageUrl:
-                                                      widget.book.imageUrl,
+                                                      _currentBook.imageUrl,
                                                 ),
                                               ),
                                             );
