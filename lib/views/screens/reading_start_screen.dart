@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../models/book.dart';
 import '../../services/book_service.dart';
+import '../../services/aladin_api_service.dart';
+import '../widgets/book_image_widget.dart';
 
 class ReadingStartScreen extends StatefulWidget {
   final String? title;
@@ -24,7 +27,13 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
   int _currentPage = 0;
 
   DateTime selectedDate = DateTime.now();
-  DateTime targetDate = DateTime.now().add(const Duration(days: 14));
+  DateTime targetDate = DateTime.now().add(const Duration(
+    days: 14,
+  ));
+
+  List<BookSearchResult> _searchResults = [];
+  bool _isSearching = false;
+  BookSearchResult? _selectedBook;
 
   @override
   void initState() {
@@ -53,6 +62,41 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
     _titleController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _searchBooks(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final results = await AladinApiService.searchBooks(query);
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    } catch (e) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+    }
+  }
+
+  void _selectBook(BookSearchResult book) {
+    setState(() {
+      _selectedBook = book;
+      _titleController.text = book.title;
+      _searchResults = [];
+    });
   }
 
   void _nextPage() {
@@ -139,12 +183,90 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
             ),
             style: const TextStyle(fontSize: 16),
             onSubmitted: (value) {
-              if (value.isNotEmpty) {
-                _nextPage();
+              _searchBooks(value);
+            },
+            onChanged: (value) {
+              if (value.isEmpty) {
+                setState(() {
+                  _searchResults = [];
+                  _selectedBook = null;
+                });
               }
             },
           ),
-          const Spacer(),
+          const SizedBox(height: 16),
+          if (_isSearching)
+            const Center(
+              child: CircularProgressIndicator(),
+            )
+          else if (_searchResults.isNotEmpty)
+            Expanded(
+              child: ListView.builder(
+                itemCount: _searchResults.length,
+                itemBuilder: (context, index) {
+                  final book = _searchResults[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    child: ListTile(
+                      leading: book.imageUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: Image.network(
+                                book.imageUrl!,
+                                width: 40,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 40,
+                                    height: 60,
+                                    color: Colors.grey[200],
+                                    child: const Icon(Icons.book, size: 20),
+                                  );
+                                },
+                              ),
+                            )
+                          : Container(
+                              width: 40,
+                              height: 60,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.book, size: 20),
+                            ),
+                      title: Text(
+                        book.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        book.author,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: book.totalPages != null
+                          ? Text(
+                              '${book.totalPages}p',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            )
+                          : null,
+                      onTap: () => _selectBook(book),
+                    ),
+                  );
+                },
+              ),
+            )
+          else
+            const Spacer(),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -190,29 +312,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: widget.imageUrl != null
-                      ? Image.asset(
-                          widget.imageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey[200],
-                              child: const Icon(
-                                Icons.book,
-                                size: 60,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.book,
-                            size: 60,
-                            color: Colors.grey,
-                          ),
-                        ),
+                  child: BookImageWidget(
+                    imageUrl: _selectedBook?.imageUrl ?? widget.imageUrl,
+                    iconSize: 60,
+                  ),
                 ),
               ),
             ),
@@ -227,10 +330,11 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 textAlign: TextAlign.center,
               ),
             ),
-            if (widget.totalPages != null) ...[
+            if (_selectedBook?.totalPages != null ||
+                widget.totalPages != null) ...[
               Center(
                 child: Text(
-                  '${widget.totalPages} 페이지',
+                  '${_selectedBook?.totalPages ?? widget.totalPages} 페이지',
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -262,8 +366,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 }
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey[300]!),
                   borderRadius: BorderRadius.circular(8),
@@ -304,8 +410,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 }
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey[300]!),
                   borderRadius: BorderRadius.circular(8),
@@ -317,7 +425,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                       '${targetDate.year}년 ${targetDate.month}월 ${targetDate.day}일',
                       style: const TextStyle(fontSize: 16),
                     ),
-                    const Icon(Icons.calendar_today, size: 20),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
@@ -326,29 +437,64 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   final book = Book(
                     title: _titleController.text,
+                    author: _selectedBook?.author,
                     startDate: selectedDate,
                     targetDate: targetDate,
-                    imageUrl: widget.imageUrl,
-                    totalPages: widget.totalPages ?? 0,
+                    imageUrl: _selectedBook?.imageUrl ?? widget.imageUrl,
+                    totalPages:
+                        _selectedBook?.totalPages ?? widget.totalPages ?? 0,
+                  );
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
                   );
 
-                  BookService().addBook(book);
-                  Navigator.popUntil(context, (route) => route.isFirst);
+                  try {
+                    final result = await BookService().addBook(book);
+                    Navigator.pop(context);
+
+                    if (result != null) {
+                      Navigator.popUntil(context, (route) => route.isFirst);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('독서 정보 저장에 실패했습니다.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('오류가 발생했습니다: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: const Text(
                   '독서 시작',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),

@@ -1,11 +1,23 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lit_goal/views/screens/book_list_screen.dart';
 import 'package:lit_goal/views/screens/calendar_screen.dart';
 import 'package:lit_goal/views/screens/home_screen.dart';
 import 'package:lit_goal/views/screens/reading_start_screen.dart';
+import 'package:lit_goal/config/app_config.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
+
+  await Supabase.initialize(
+    url: AppConfig.supabaseUrl,
+    anonKey: AppConfig.supabaseAnonKey,
+  );
+
   runApp(const MyApp());
 }
 
@@ -55,6 +67,7 @@ class _MainScreenState extends State<MainScreen> {
         Scaffold(
           body: _pages[_selectedIndex],
           bottomNavigationBar: BottomNavigationBar(
+            backgroundColor: Colors.white,
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(CupertinoIcons.home),
@@ -78,23 +91,24 @@ class _MainScreenState extends State<MainScreen> {
             },
           ),
         ),
-        AnimatedOpacity(
-          opacity: _isDropdownOpen ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _isDropdownOpen = false;
-              });
-            },
-            child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              color: const Color.fromRGBO(0, 0, 0, 0.3),
+        if (_isDropdownOpen)
+          AnimatedOpacity(
+            opacity: _isDropdownOpen ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isDropdownOpen = false;
+                });
+              },
+              child: Container(
+                width: double.infinity,
+                height: double.infinity,
+                color: const Color.fromRGBO(0, 0, 0, 0.3),
+              ),
             ),
           ),
-        ),
         Positioned(
           bottom: 108,
           right: 16,
@@ -165,7 +179,11 @@ class _MainScreenState extends State<MainScreen> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () {
+                              setState(() {
+                                _isDropdownOpen = false;
+                              });
+                            },
                             child: Container(
                               padding: const EdgeInsets.only(
                                 left: 12,
