@@ -1,10 +1,7 @@
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import '../../reading/widgets/reading_start_screen.dart';
 import '../../../domain/models/book.dart';
 import '../../../domain/models/book_image.dart';
 import '../../../data/services/book_service.dart';
