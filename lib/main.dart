@@ -11,16 +11,23 @@ import 'package:lit_goal/config/app_config.dart';
 import 'package:lit_goal/data/repositories/book_repository.dart';
 import 'package:lit_goal/data/services/book_service.dart';
 import 'package:lit_goal/ui/home/view_model/home_view_model.dart';
+import 'data/services/auth_service.dart';
+import 'ui/auth/widgets/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await dotenv.load(fileName: ".env");
+
+  AppConfig.validateApiKeys();
 
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
-  );
+  ).then((_) {
+    debugPrint('Supabase 초기화 성공');
+  }).catchError((error) {
+    debugPrint('Supabase 초기화 실패: $error');
+  });
 
   runApp(const MyApp());
 }
@@ -45,15 +52,32 @@ class MyApp extends StatelessWidget {
             context.read<BookRepository>(),
           ),
         ),
+        ChangeNotifierProvider(create: (_) => AuthService()),
       ],
       child: MaterialApp(
-        title: '독서 분량 설정기',
+        title: 'LitGoal',
         theme: ThemeData(
-          primarySwatch: Colors.blue,
-          scaffoldBackgroundColor: Colors.white,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
         ),
-        home: const MainScreen(),
+        home: const AuthWrapper(),
       ),
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthService>(
+      builder: (context, authService, _) {
+        if (authService.currentUser != null) {
+          return const HomeScreen();
+        }
+        return const LoginScreen();
+      },
     );
   }
 }
