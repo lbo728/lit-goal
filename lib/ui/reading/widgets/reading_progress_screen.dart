@@ -1,92 +1,97 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ReadingProgressScreen extends StatelessWidget {
-  const ReadingProgressScreen({super.key});
+  final String bookId;
+  const ReadingProgressScreen({super.key, required this.bookId});
+
+  Future<List<Map<String, dynamic>>> fetchProgressHistory(String bookId) async {
+    final response = await Supabase.instance.client
+        .from('reading_progress_history')
+        .select('page, created_at')
+        .eq('book_id', bookId)
+        .order('created_at', ascending: true);
+    return (response as List)
+        .map((e) => {
+              'page': e['page'] as int,
+              'created_at': DateTime.parse(e['created_at'] as String),
+            })
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('진행률 히스토리'),
         backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          '진행중 완독',
-          style: TextStyle(color: Colors.black),
-        ),
       ),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.7,
-        ),
-        itemCount: 6,
-        itemBuilder: (context, index) {
-          if (index == 5) {
-            return GestureDetector(
-              onTap: () {
-                // 새 책 추가 로직
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Icon(
-                    CupertinoIcons.add,
-                    color: Colors.blue,
-                    size: 40,
+      backgroundColor: Colors.white,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: fetchProgressHistory(bookId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return const Text('진행률 불러오기 실패');
+            }
+            final data = snapshot.data ?? [];
+            if (data.isEmpty) {
+              return const Text('진행률 기록이 없습니다.');
+            }
+            final spots = data.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final page = entry.value['page'] as int;
+              return FlSpot(idx.toDouble(), page.toDouble());
+            }).toList();
+            return SizedBox(
+              height: 240,
+              child: LineChart(
+                LineChartData(
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      color: Colors.blue,
+                      barWidth: 3,
+                      dotData: const FlDotData(show: true),
+                    ),
+                  ],
+                  titlesData: FlTitlesData(
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: true),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          final idx = value.toInt();
+                          if (idx < 0 || idx >= data.length)
+                            return const SizedBox();
+                          final date = data[idx]['created_at'] as DateTime;
+                          return Text(
+                            '${date.month}/${date.day}',
+                            style: const TextStyle(fontSize: 10),
+                          );
+                        },
+                        interval:
+                            (data.length / 4).ceilToDouble().clamp(1, 999),
+                      ),
+                    ),
                   ),
+                  gridData: const FlGridData(show: true),
+                  borderData: FlBorderData(show: false),
                 ),
               ),
             );
-          }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/images/book-cover.jpg',
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '개발자를 위한 생각의 정리',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.blue,
-        onPressed: () {
-          // 새 책 추가 로직
-        },
-        child: const Icon(Icons.add, color: Colors.white),
+          },
+        ),
       ),
     );
   }

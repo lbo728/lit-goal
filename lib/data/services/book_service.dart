@@ -52,6 +52,22 @@ class BookService {
     }
   }
 
+  Future<Book?> addBookWithUserId(Map<String, dynamic> bookData) async {
+    try {
+      bookData.remove('id');
+      bookData['created_at'] = DateTime.now().toIso8601String();
+      bookData['updated_at'] = DateTime.now().toIso8601String();
+      final response =
+          await _supabase.from(_tableName).insert(bookData).select().single();
+      final newBook = Book.fromJson(response);
+      _books.insert(0, newBook);
+      return newBook;
+    } catch (e) {
+      print('책 추가 실패: $e');
+      return null;
+    }
+  }
+
   Future<Book?> updateBook(String bookId, Book book) async {
     try {
       final bookData = book.toJson();
