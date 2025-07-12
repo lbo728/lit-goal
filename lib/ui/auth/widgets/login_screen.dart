@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/auth_service.dart';
+import 'package:lit_goal/main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -65,6 +66,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (errorMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(mapAuthError(errorMessage))),
+      );
+    } else if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false,
       );
     }
   }
@@ -164,19 +171,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _isLoading
-                    ? null
-                    : () => _handleSocialAuth(
-                          context.read<AuthService>().signInWithKakao,
-                        ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFEE500),
-                  foregroundColor: Colors.black87,
-                ),
-                child: const Text('카카오로 계속하기'),
-              ),
+              // const SizedBox(height: 16),
+              // ElevatedButton(
+              //   onPressed: _isLoading
+              //       ? null
+              //       : () => _handleSocialAuth(
+              //             context.read<AuthService>().signInWithKakao,
+              //           ),
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: const Color(0xFFFEE500),
+              //     foregroundColor: Colors.black87,
+              //   ),
+              //   child: const Text('카카오로 계속하기'),
+              // ),
               const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: _isLoading
