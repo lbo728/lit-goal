@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../domain/models/book.dart';
 import '../../../data/services/book_service.dart';
 import '../../../data/services/aladin_api_service.dart';
@@ -274,7 +275,9 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -438,6 +441,7 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () async {
+                  final userId = Supabase.instance.client.auth.currentUser?.id;
                   final book = Book(
                     title: _titleController.text,
                     author: _selectedBook?.author,
@@ -456,7 +460,10 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                   );
 
                   try {
-                    final result = await BookService().addBook(book);
+                    final bookData = book.toJson();
+                    bookData['user_id'] = userId;
+                    final result =
+                        await BookService().addBookWithUserId(bookData);
                     if (mounted) {
                       Navigator.pop(context);
 
