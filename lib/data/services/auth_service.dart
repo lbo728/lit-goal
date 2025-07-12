@@ -38,7 +38,6 @@ class AuthService extends ChangeNotifier {
     });
   }
 
-  // 이메일 회원가입
   Future<String?> signUpWithEmail({
     required String email,
     required String password,
@@ -58,7 +57,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // 이메일 로그인
   Future<String?> signInWithEmail({
     required String email,
     required String password,
@@ -76,13 +74,16 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // 카카오 로그인
   Future<String?> signInWithKakao() async {
     try {
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.kakao,
         redirectTo: kIsWeb ? null : 'io.supabase.lit_goal://login-callback',
+        authScreenLaunchMode: kIsWeb
+            ? LaunchMode.platformDefault
+            : LaunchMode.externalApplication,
       );
+
       return null;
     } on AuthException catch (error) {
       return error.message;
@@ -91,7 +92,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // 구글 로그인
   Future<String?> signInWithGoogle() async {
     try {
       await _supabase.auth.signInWithOAuth(
@@ -106,7 +106,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // 로그아웃
   Future<String?> signOut() async {
     try {
       await _supabase.auth.signOut();
@@ -118,7 +117,6 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  // 비밀번호 재설정 이메일 전송
   Future<String?> resetPassword(String email) async {
     try {
       await _supabase.auth.resetPasswordForEmail(
