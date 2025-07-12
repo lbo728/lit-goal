@@ -14,6 +14,12 @@ class MyPageScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('마이페이지'),
+        centerTitle: false,
+        titleTextStyle: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w500,
+          color: Colors.black,
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),

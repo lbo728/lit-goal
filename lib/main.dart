@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:lit_goal/ui/reading/widgets/reading_chart_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:lit_goal/ui/book/widgets/book_list_screen.dart';
@@ -95,8 +96,8 @@ class _MainScreenState extends State<MainScreen> {
   bool _isDropdownOpen = false;
 
   List<Widget> get _pages => [
-        const HomeScreen(),
         const BookListScreen(),
+        const ReadingChartScreen(),
         const MyPageScreen(),
       ];
 
@@ -121,11 +122,11 @@ class _MainScreenState extends State<MainScreen> {
                 label: '홈',
               ),
               BottomNavigationBarItem(
-                icon: Icon(CupertinoIcons.book),
-                label: '독서 목록',
+                icon: Icon(CupertinoIcons.chart_bar_fill),
+                label: '독서 상태',
               ),
               BottomNavigationBarItem(
-                icon: Icon(CupertinoIcons.person),
+                icon: Icon(CupertinoIcons.person_fill),
                 label: '마이페이지',
               ),
             ],

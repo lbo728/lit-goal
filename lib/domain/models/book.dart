@@ -50,6 +50,7 @@ class Book {
   final int totalPages;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? status;
 
   Book({
     this.id,
@@ -62,6 +63,7 @@ class Book {
     this.totalPages = 0,
     this.createdAt,
     this.updatedAt,
+    this.status,
   });
 
   Book copyWith({
@@ -75,6 +77,7 @@ class Book {
     int? totalPages,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? status,
   }) {
     return Book(
       id: id ?? this.id,
@@ -87,6 +90,7 @@ class Book {
       totalPages: totalPages ?? this.totalPages,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      status: status ?? this.status,
     );
   }
 
@@ -102,25 +106,27 @@ class Book {
       'total_pages': totalPages,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+      if (status != null) 'status': status,
     };
   }
 
   factory Book.fromJson(Map<String, dynamic> json) {
     return Book(
-      id: json['id'],
-      title: json['title'] ?? '',
-      author: json['author'],
-      startDate: DateTime.parse(json['start_date']),
-      targetDate: DateTime.parse(json['target_date']),
-      imageUrl: json['image_url'],
-      currentPage: json['current_page'] ?? 0,
-      totalPages: json['total_pages'] ?? 0,
+      id: json['id'] as String?,
+      title: json['title'] as String,
+      author: json['author'] as String?,
+      startDate: DateTime.parse(json['start_date'] as String),
+      targetDate: DateTime.parse(json['target_date'] as String),
+      imageUrl: json['image_url'] as String?,
+      currentPage: json['current_page'] as int? ?? 0,
+      totalPages: json['total_pages'] as int? ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
+      status: json['status'] as String?,
     );
   }
 }
