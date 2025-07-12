@@ -62,11 +62,28 @@ class _BookListScreenState extends State<BookListScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _bookService.hasBooks
-                ? _buildBookList()
-                : _buildEmptyState(),
+            : _buildContentWithRefresh(),
       ),
     );
+  }
+
+  Widget _buildContentWithRefresh() {
+    if (_bookService.hasBooks) {
+      return _buildBookList();
+    } else {
+      return RefreshIndicator(
+        onRefresh: _loadBooks,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: _buildEmptyState(),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildEmptyState() {
