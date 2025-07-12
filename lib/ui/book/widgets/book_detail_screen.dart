@@ -68,9 +68,13 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                       fontSize: 18,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(
+                    height: 12,
+                  ),
                   Text('총 ${_currentBook.totalPages} 페이지'),
-                  const SizedBox(height: 16),
+                  const SizedBox(
+                    height: 16,
+                  ),
                   TextField(
                     controller: controller,
                     keyboardType: TextInputType.number,
@@ -79,7 +83,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(
+                    height: 24,
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -683,7 +689,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      '${((_currentBook.currentPage / _currentBook.totalPages) * 100).toStringAsFixed(0)}% (${_currentBook.currentPage}페이지 / ${_currentBook.totalPages}페이지)',
+                      _currentBook.totalPages > 0
+                          ? '${((_currentBook.currentPage / _currentBook.totalPages) * 100).toStringAsFixed(0)}% (${_currentBook.currentPage}페이지 / ${_currentBook.totalPages}페이지)'
+                          : '0% (0페이지 / 0페이지)',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -887,40 +895,88 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                   },
                 ),
                 const SizedBox(height: 24),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    textStyle: const TextStyle(fontSize: 13),
+                  ),
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('책 정보 삭제'),
+                        content: const Text(
+                            '정말 이 책 정보를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('취소'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('삭제',
+                                style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      final success =
+                          await _bookService.deleteBook(_currentBook.id!);
+                      if (success && mounted) {
+                        Navigator.pop(context);
+                      } else if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('책 삭제에 실패했습니다.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('책 정보 삭제하기'),
+                ),
               ],
             ),
           ),
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: (_todayStartPage == null || _todayTargetPage == null)
-                  ? _showTodayGoalSheet
-                  : _showUpdatePageDialog,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                (_todayStartPage == null || _todayTargetPage == null)
-                    ? '오늘의 분량을 설정해주세요'
-                    : '현재 페이지 업데이트',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed:
+                      (_todayStartPage == null || _todayTargetPage == null)
+                          ? _showTodayGoalSheet
+                          : _showUpdatePageDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    (_todayStartPage == null || _todayTargetPage == null)
+                        ? '오늘의 분량을 설정해주세요'
+                        : '현재 페이지 업데이트',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
