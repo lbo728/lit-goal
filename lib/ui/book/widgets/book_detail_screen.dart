@@ -1,9 +1,11 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../reading/widgets/reading_start_screen.dart';
 import '../../../domain/models/book.dart';
 import '../../../data/services/book_service.dart';
 import '../../core/ui/book_image_widget.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -32,55 +34,81 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       text: _currentBook.currentPage.toString(),
     );
 
-    final result = await showDialog<int>(
+    await showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('현재 페이지 업데이트'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('총 ${_currentBook.totalPages} 페이지'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: '현재 페이지',
-                border: OutlineInputBorder(),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              top: 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '현재 페이지 업데이트',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text('총 ${_currentBook.totalPages} 페이지'),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '현재 페이지',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('취소'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          final page = int.tryParse(controller.text);
+                          if (page != null &&
+                              page >= 0 &&
+                              page <= _currentBook.totalPages) {
+                            Navigator.pop(context);
+                            _updateCurrentPage(page);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('올바른 페이지 번호를 입력해주세요.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text('업데이트'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
           ),
-          TextButton(
-            onPressed: () {
-              final page = int.tryParse(controller.text);
-              if (page != null &&
-                  page >= 0 &&
-                  page <= _currentBook.totalPages) {
-                Navigator.pop(context, page);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('올바른 페이지 번호를 입력해주세요.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('업데이트'),
-          ),
-        ],
-      ),
+        );
+      },
     );
-
-    if (result != null && _currentBook.id != null) {
-      _updateCurrentPage(result);
-    }
   }
 
   Future<void> _updateCurrentPage(int newPage) async {
@@ -121,6 +149,123 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchBookImages(String bookId) async {
+    final response = await Supabase.instance.client
+        .from('book_images')
+        .select('id, image_url')
+        .eq('book_id', bookId)
+        .order('created_at', ascending: false);
+    return (response as List)
+        .map((e) => {
+              'id': e['id'] as String,
+              'image_url': e['image_url'] as String,
+            })
+        .where((e) => e['image_url']!.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _deleteBookImage(String imageId, String imageUrl) async {
+    final storage = Supabase.instance.client.storage;
+    final bucketPath =
+        imageUrl.split('/storage/v1/object/public/book-images/').last;
+    await storage.from('book-images').remove([bucketPath]);
+    await Supabase.instance.client
+        .from('book_images')
+        .delete()
+        .eq('id', imageId);
+    setState(() {});
+  }
+
+  void _confirmDeleteImage(String imageId, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('이미지 삭제'),
+        content: const Text('정말 이미지를 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteBookImage(imageId, imageUrl);
+            },
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadBookImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source);
+    if (pickedFile == null) return;
+
+    final bytes = await pickedFile.readAsBytes();
+    final fileName = 'book_images/${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    final storage = Supabase.instance.client.storage;
+    await storage.from('book-images').uploadBinary(fileName, bytes,
+        fileOptions: const FileOptions(upsert: true));
+
+    final publicUrl = storage.from('book-images').getPublicUrl(fileName);
+
+    await Supabase.instance.client.from('book_images').insert({
+      'book_id': _currentBook.id,
+      'image_url': publicUrl,
+      'caption': '',
+    });
+
+    setState(() {});
+  }
+
+  void _showAddImageBottomSheet() {
+    final isCameraAvailable = !kIsWeb &&
+        (Platform.isAndroid || Platform.isIOS) &&
+        (Platform.isAndroid || (Platform.isIOS && !Platform.isMacOS));
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('카메라 촬영하기'),
+                enabled: isCameraAvailable && !Platform.isIOS ? true : false,
+                onTap: isCameraAvailable && !Platform.isIOS
+                    ? () async {
+                        Navigator.pop(context);
+                        await _pickAndUploadBookImage(ImageSource.camera);
+                      }
+                    : () {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('시뮬레이터에서는 카메라를 사용할 수 없습니다.'),
+                          ),
+                        );
+                      },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('라이브러리에서 가져오기'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _pickAndUploadBookImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,181 +274,422 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           '독서 상세',
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(
+            color: Colors.black,
+          ),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.only(top: 24),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ),
             child: Column(
               children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 책 커버
+                    Container(
+                      width: 100,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.grey[100]!,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: BookImageWidget(
+                          imageUrl: _currentBook.imageUrl,
+                          iconSize: 80,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // 주요 정보
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 제목 + 상태 뱃지
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _currentBook.title,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.left,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Builder(
+                                builder: (context) {
+                                  String status;
+                                  Color badgeColor;
+                                  Color textColor;
+                                  if (_currentBook.currentPage >=
+                                          _currentBook.totalPages &&
+                                      _currentBook.totalPages > 0) {
+                                    status = '완독';
+                                    badgeColor = Colors.green.withOpacity(0.12);
+                                    textColor = Colors.green[700]!;
+                                  } else {
+                                    status = '독서 중';
+                                    badgeColor = Colors.blue.withOpacity(0.12);
+                                    textColor = Colors.blue;
+                                  }
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: badgeColor,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      status,
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          if (_currentBook.author != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _currentBook.author!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'D-${(_currentBook.startDate != null) ? (_currentBook.targetDate.difference(_currentBook.startDate).inDays + 1) : 0}',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              const Text(
+                                '독서 시작일: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  _currentBook.startDate
+                                      .toString()
+                                      .substring(0, 10)
+                                      .replaceAll('-', '.'),
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Text('목표 완료일: ',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w500)),
+                              Expanded(
+                                child: Text(
+                                  _currentBook.targetDate != null
+                                      ? _currentBook.targetDate
+                                          .toString()
+                                          .substring(0, 10)
+                                          .replaceAll('-', '.')
+                                      : '미설정',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _currentBook.targetDate ??
+                                        DateTime.now(),
+                                    firstDate: DateTime(2000),
+                                    lastDate: DateTime(2100),
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      _currentBook = _currentBook.copyWith(
+                                          targetDate: picked);
+                                    });
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(0, 32),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                child: Text(
+                                  _currentBook.targetDate == null
+                                      ? '설정하기'
+                                      : '변경하기',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const Text(
+                                '총 페이지: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  _currentBook.totalPages.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // 독서기간 (완독 시)
+                          if (_currentBook.currentPage >=
+                                  _currentBook.totalPages &&
+                              _currentBook.totalPages > 0)
+                            Row(
+                              children: [
+                                const Text(
+                                  '독서기간: ',
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                                Text(
+                                  '${_currentBook.targetDate.difference(_currentBook.startDate).inDays + 1}일',
+                                  style: const TextStyle(color: Colors.black87),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 8,
+                ),
+                LinearProgressIndicator(
+                  value: (_currentBook.totalPages > 0)
+                      ? (_currentBook.currentPage / _currentBook.totalPages)
+                          .clamp(0.0, 1.0)
+                      : 0.0,
+                  minHeight: 16,
+                  backgroundColor: Colors.blue.withOpacity(0.08),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 Container(
-                  width: 200,
-                  height: 280,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: BookImageWidget(
-                      imageUrl: _currentBook.imageUrl,
-                      iconSize: 80,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _currentBook.title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (_currentBook.author != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _currentBook.author!,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: _showUpdatePageDialog,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                    ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      '${_currentBook.currentPage}페이지 / ${_currentBook.totalPages}페이지 (탭하여 업데이트)',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.blue,
+                      '${((_currentBook.currentPage / _currentBook.totalPages) * 100).toStringAsFixed(0)}% (${_currentBook.currentPage}페이지 / ${_currentBook.totalPages}페이지)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'D-${DateTime.now().difference(_currentBook.startDate).inDays + 1} (${((_currentBook.currentPage / _currentBook.totalPages) * 100).toStringAsFixed(0)}% 진행)',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[600],
-                  ),
+                const SizedBox(
+                  height: 24,
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  '오늘 메모',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '인상적인 페이지 기록',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black,
                     ),
-                    itemCount: 4,
-                    itemBuilder: (context, index) {
-                      if (index == 3) {
-                        return GestureDetector(
-                          onTap: () {
-                            showModalBottomSheet(
-                              context: context,
-                              builder: (context) => Container(
-                                height: 120,
-                                padding: const EdgeInsets.all(16),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    Column(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.book),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    ReadingStartScreen(
-                                                  title: _currentBook.title,
-                                                  totalPages:
-                                                      _currentBook.totalPages,
-                                                  imageUrl:
-                                                      _currentBook.imageUrl,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                        const Text('독서 시작'),
-                                      ],
+                  ),
+                ),
+                const SizedBox(
+                  height: 12,
+                ),
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: fetchBookImages(_currentBook.id!),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return const Text('이미지 불러오기 실패');
+                    }
+                    final images = snapshot.data ?? [];
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 1,
+                      ),
+                      itemCount: images.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == images.length) {
+                          return GestureDetector(
+                            onTap: _showAddImageBottomSheet,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey[200],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.grey,
+                                    size: 32,
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    '새로운 사진\n추가하기',
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 13,
                                     ),
-                                    Column(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.camera_alt),
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                        ),
-                                        const Text('사진 추가'),
-                                      ],
-                                    ),
-                                  ],
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        final img = images[index];
+                        final imgUrl = img['image_url']!;
+                        final imgId = img['id']!;
+                        return Stack(
+                          children: [
+                            Positioned.fill(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  imgUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                    color: Colors.grey[200],
+                                    child: const Icon(Icons.broken_image,
+                                        color: Colors.grey),
+                                  ),
                                 ),
                               ),
-                            );
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Center(
-                              child: Icon(
-                                CupertinoIcons.add,
-                                color: Colors.blue,
-                                size: 30,
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () => _confirmDeleteImage(imgId, imgUrl),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  padding: const EdgeInsets.all(2),
+                                  child: const Icon(Icons.close,
+                                      size: 18, color: Colors.white),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         );
-                      }
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      );
-                    },
-                  ),
+                      },
+                    );
+                  },
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _showUpdatePageDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                '현재 페이지 업데이트',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
           ),
         ),
