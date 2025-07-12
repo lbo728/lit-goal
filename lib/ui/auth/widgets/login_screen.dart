@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (errorMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
+        SnackBar(content: Text(mapAuthError(errorMessage))),
       );
     }
   }
@@ -64,9 +64,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (errorMessage != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
+        SnackBar(content: Text(mapAuthError(errorMessage))),
       );
     }
+  }
+
+  String mapAuthError(String error) {
+    if (error.contains('Invalid login credentials')) {
+      return '이메일 또는 비밀번호가 올바르지 않습니다.';
+    }
+    if (error.contains('Email not confirmed')) {
+      return '이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.';
+    }
+    if (error.contains('User already registered')) {
+      return '이미 가입된 이메일입니다.';
+    }
+    if (error.contains('Password should be at least')) {
+      return '비밀번호는 6자 이상이어야 합니다.';
+    }
+    return error;
   }
 
   @override
