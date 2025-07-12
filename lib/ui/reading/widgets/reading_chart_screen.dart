@@ -87,7 +87,7 @@ class ReadingChartScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
-                    height: 240,
+                    height: 280,
                     child: LineChart(
                       LineChartData(
                         lineBarsData: [
@@ -101,20 +101,32 @@ class ReadingChartScreen extends StatelessWidget {
                         ],
                         titlesData: FlTitlesData(
                           leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: true),
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
                           ),
                           bottomTitles: AxisTitles(
                             sideTitles: SideTitles(
                               showTitles: true,
+                              reservedSize: 32,
                               getTitlesWidget: (value, meta) {
                                 final idx = value.toInt();
                                 if (idx < 0 || idx >= aggregated.length)
                                   return const SizedBox();
                                 final date =
                                     aggregated[idx]['date'] as DateTime;
-                                return Text(
-                                  '${date.month}/${date.day}',
-                                  style: const TextStyle(fontSize: 10),
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Text(
+                                    '${date.month}/${date.day}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                    ),
+                                  ),
                                 );
                               },
                               interval: (aggregated.length / 4)
@@ -123,7 +135,7 @@ class ReadingChartScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        gridData: const FlGridData(show: true),
+                        gridData: const FlGridData(show: false),
                         borderData: FlBorderData(show: false),
                       ),
                     ),
