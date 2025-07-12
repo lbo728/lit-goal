@@ -2,9 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/auth_service.dart';
 import 'login_screen.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
-class MyPageScreen extends StatelessWidget {
+class MyPageScreen extends StatefulWidget {
   const MyPageScreen({super.key});
+
+  @override
+  State<MyPageScreen> createState() => _MyPageScreenState();
+}
+
+class _MyPageScreenState extends State<MyPageScreen> {
+  bool _isEditingNickname = false;
+  late TextEditingController _nicknameController;
+
+  File? _pendingAvatarFile;
+  String? _pendingAvatarPath;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final user = context.watch<AuthService>().currentUser;
+    _nicknameController = TextEditingController(text: user?.nickname ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nicknameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => context.read<AuthService>().fetchCurrentUser());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,38 +53,168 @@ class MyPageScreen extends StatelessWidget {
           color: Colors.black,
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (user != null) ...[
-              Text(
-                '이메일: ${user.email}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await authService.fetchCurrentUser();
+
+          setState(() {});
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (user != null) ...[
+                  Center(
+                    child: Column(
+                      children: [
+                        GestureDetector(
+                          onTap: _pendingAvatarFile != null
+                              ? null
+                              : () async {
+                                  final picker = ImagePicker();
+                                  final picked = await picker.pickImage(
+                                      source: ImageSource.gallery);
+                                  if (picked != null) {
+                                    setState(() {
+                                      _pendingAvatarFile = File(picked.path);
+                                      _pendingAvatarPath = picked.path;
+                                    });
+                                  }
+                                },
+                          child: CircleAvatar(
+                            radius: 40,
+                            backgroundImage: _pendingAvatarFile != null
+                                ? FileImage(_pendingAvatarFile!)
+                                : (user.avatarUrl != null
+                                    ? NetworkImage(user.avatarUrl!)
+                                    : const AssetImage(
+                                            'assets/images/default_avatar.png')
+                                        as ImageProvider),
+                          ),
+                        ),
+                        if (_pendingAvatarFile != null) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton(
+                                onPressed: () async {
+                                  if (_pendingAvatarFile != null) {
+                                    print(
+                                        '_pendingAvatarFile: $_pendingAvatarFile');
+                                    await authService
+                                        .uploadAvatar(_pendingAvatarFile!);
+                                    setState(() {
+                                      _pendingAvatarFile = null;
+                                      _pendingAvatarPath = null;
+                                    });
+                                  }
+                                },
+                                child: const Text('변경'),
+                              ),
+                              const SizedBox(width: 8),
+                              OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _pendingAvatarFile = null;
+                                    _pendingAvatarPath = null;
+                                  });
+                                },
+                                child: const Text('취소'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(
+                    height: 16,
+                  ),
+                  _isEditingNickname
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _nicknameController,
+                                decoration: const InputDecoration(
+                                  labelText: '닉네임',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () async {
+                                await authService
+                                    .updateNickname(_nicknameController.text);
+                                setState(() {
+                                  _isEditingNickname = false;
+                                });
+                              },
+                              child: const Text('변경하기'),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isEditingNickname = false;
+                                  _nicknameController.text =
+                                      user.nickname ?? '';
+                                });
+                              },
+                              child: const Text('취소'),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                user.nickname ?? '닉네임 없음',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isEditingNickname = true;
+                                  _nicknameController.text =
+                                      user.nickname ?? '';
+                                });
+                              },
+                              child: const Text('닉네임 변경'),
+                            ),
+                          ],
+                        ),
+                  const SizedBox(height: 16),
+                  Text('이메일: ${user.email}'),
+                  const SizedBox(height: 32),
+                ],
+                ElevatedButton(
+                  onPressed: () async {
+                    await context.read<AuthService>().signOut();
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (route) => false,
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('로그아웃'),
                 ),
-              ),
-              const SizedBox(height: 32),
-            ],
-            ElevatedButton(
-              onPressed: () async {
-                await context.read<AuthService>().signOut();
-                if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    (route) => false,
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('로그아웃'),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
