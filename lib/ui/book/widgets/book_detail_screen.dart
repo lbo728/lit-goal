@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -22,11 +23,17 @@ class BookDetailScreen extends StatefulWidget {
 class _BookDetailScreenState extends State<BookDetailScreen> {
   final BookService _bookService = BookService();
   late Book _currentBook;
+  int? _todayStartPage;
+  int? _todayTargetPage;
+  bool _todayGoalAchieved = false;
 
   @override
   void initState() {
     super.initState();
     _currentBook = widget.book;
+    _todayStartPage = _currentBook.startDate.day;
+    _todayTargetPage = _currentBook.targetDate.day;
+    _todayGoalAchieved = _currentBook.currentPage >= _currentBook.totalPages;
   }
 
   Future<void> _showUpdatePageDialog() async {
@@ -118,6 +125,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       if (updatedBook != null) {
         setState(() {
           _currentBook = updatedBook;
+          _todayGoalAchieved =
+              _currentBook.currentPage >= _currentBook.totalPages;
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -264,6 +273,78 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         );
       },
     );
+  }
+
+  void _showTodayGoalSheet() {
+    final startController =
+        TextEditingController(text: _todayStartPage?.toString() ?? '');
+    final endController =
+        TextEditingController(text: _todayTargetPage?.toString() ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            top: 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('오늘의 분량 설정',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: startController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: '시작 페이지'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: endController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: '목표 페이지'),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  final start = int.tryParse(startController.text);
+                  final end = int.tryParse(endController.text);
+                  if (start != null && end != null && start < end) {
+                    setState(() {
+                      _todayStartPage = start;
+                      _todayTargetPage = end;
+                    });
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text('저장'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> fetchProgressHistory(String bookId) async {
+    final response = await Supabase.instance.client
+        .from('reading_progress_history')
+        .select('page, created_at')
+        .eq('book_id', bookId)
+        .order('created_at', ascending: true);
+    return (response as List)
+        .map((e) => {
+              'page': e['page'] as int,
+              'created_at': DateTime.parse(e['created_at'] as String),
+            })
+        .toList();
   }
 
   @override
@@ -503,23 +584,83 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          // 독서기간 (완독 시)
-                          if (_currentBook.currentPage >=
-                                  _currentBook.totalPages &&
-                              _currentBook.totalPages > 0)
-                            Row(
-                              children: [
-                                const Text(
-                                  '독서기간: ',
-                                  style: TextStyle(fontWeight: FontWeight.w500),
-                                ),
+                          const SizedBox(
+                            height: 8,
+                          ),
+                          Row(
+                            children: [
+                              const Text('오늘의 분량: ',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w500)),
+                              if (_todayStartPage != null &&
+                                  _todayTargetPage != null)
                                 Text(
-                                  '${_currentBook.targetDate.difference(_currentBook.startDate).inDays + 1}일',
-                                  style: const TextStyle(color: Colors.black87),
+                                    '$_todayStartPage ~ $_todayTargetPage 페이지'),
+                              if (_todayStartPage == null ||
+                                  _todayTargetPage == null)
+                                const Text(
+                                  '미설정',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                  ),
                                 ),
-                              ],
-                            ),
+                              const SizedBox(
+                                width: 8,
+                              ),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 80,
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _showTodayGoalSheet,
+                                  style: ElevatedButton.styleFrom(
+                                    minimumSize: const Size(0, 32),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  child: const Text(
+                                    '변경하기',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // 달성 여부 체크
+                          Row(
+                            children: [
+                              const Text('달성 여부: ',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  )),
+                              Checkbox(
+                                value: _todayGoalAchieved,
+                                onChanged: (val) {
+                                  setState(() {
+                                    _todayGoalAchieved = val ?? false;
+                                  });
+                                },
+                              ),
+                              Text(_todayGoalAchieved ? '달성' : '미달성',
+                                  style: TextStyle(
+                                    color: _todayGoalAchieved
+                                        ? Colors.green
+                                        : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  )),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -652,8 +793,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                     shape: BoxShape.circle,
                                   ),
                                   padding: const EdgeInsets.all(2),
-                                  child: const Icon(Icons.close,
-                                      size: 18, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                             ),
@@ -663,6 +807,86 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                     );
                   },
                 ),
+                const SizedBox(
+                  height: 24,
+                ),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '진행률 히스토리',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: fetchProgressHistory(_currentBook.id!),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return const Text('진행률 불러오기 실패');
+                    }
+                    final data = snapshot.data ?? [];
+                    if (data.isEmpty) {
+                      return const Text('진행률 기록이 없습니다.');
+                    }
+                    final spots = data.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final page = entry.value['page'] as int;
+                      return FlSpot(idx.toDouble(), page.toDouble());
+                    }).toList();
+                    return SizedBox(
+                      height: 180,
+                      child: LineChart(
+                        LineChartData(
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: spots,
+                              isCurved: true,
+                              color: Colors.blue,
+                              barWidth: 3,
+                              dotData: const FlDotData(show: true),
+                            ),
+                          ],
+                          titlesData: FlTitlesData(
+                            leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(showTitles: true),
+                            ),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final idx = value.toInt();
+                                  if (idx < 0 || idx >= data.length)
+                                    return const SizedBox();
+                                  final date =
+                                      data[idx]['created_at'] as DateTime;
+                                  return Text(
+                                    '${date.month}/${date.day}',
+                                    style: const TextStyle(fontSize: 10),
+                                  );
+                                },
+                                interval: (data.length / 4)
+                                    .ceilToDouble()
+                                    .clamp(1, 999),
+                              ),
+                            ),
+                          ),
+                          gridData: const FlGridData(show: true),
+                          borderData: FlBorderData(show: false),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -675,16 +899,20 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton(
-              onPressed: _showUpdatePageDialog,
+              onPressed: (_todayStartPage == null || _todayTargetPage == null)
+                  ? _showTodayGoalSheet
+                  : _showUpdatePageDialog,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                '현재 페이지 업데이트',
-                style: TextStyle(
+              child: Text(
+                (_todayStartPage == null || _todayTargetPage == null)
+                    ? '오늘의 분량을 설정해주세요'
+                    : '현재 페이지 업데이트',
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
