@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import '../../domain/models/user_model.dart';
+import 'dart:io';
 
 class AuthService extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -49,6 +50,15 @@ class AuthService extends ChangeNotifier {
         password: password,
         data: {'name': name},
       );
+      final userId = response.user?.id;
+      if (userId != null) {
+        await _supabase.from('users').insert({
+          'id': userId,
+          'email': email,
+          'name': name,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        });
+      }
       return null;
     } on AuthException catch (error) {
       return error.message;
@@ -129,5 +139,50 @@ class AuthService extends ChangeNotifier {
     } catch (error) {
       return '알 수 없는 오류가 발생했습니다.';
     }
+  }
+
+  Future<void> updateNickname(String nickname) async {
+    final userId = _currentUser?.id;
+    if (userId == null) return;
+    await _supabase
+        .from('users')
+        .update({'nickname': nickname}).eq('id', userId);
+    await fetchCurrentUser();
+    notifyListeners();
+  }
+
+  Future<void> uploadAvatar(File file) async {
+    final userId = _currentUser?.id;
+    if (userId == null) return;
+    final filePath = '$userId/avatar.png';
+    await _supabase.storage.from('avatars').upload(
+          filePath,
+          file,
+          fileOptions: const FileOptions(upsert: true),
+        );
+
+    final url = _supabase.storage.from('avatars').getPublicUrl(filePath);
+
+    await _supabase.from('users').update({'avatar_url': url}).eq('id', userId);
+
+    await fetchCurrentUser();
+    notifyListeners();
+  }
+
+  Future<UserModel?> fetchCurrentUser() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return null;
+    final data =
+        await _supabase.from('users').select().eq('id', userId).single();
+    _currentUser = UserModel.fromJson(data);
+    notifyListeners();
+    return _currentUser;
+  }
+
+  Future<UserModel?> getCurrentUser() async {
+    final user = await _supabase.auth.getUser();
+    _currentUser = UserModel.fromUser(user.user!);
+    notifyListeners();
+    return _currentUser;
   }
 }

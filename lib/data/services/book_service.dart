@@ -18,9 +18,12 @@ class BookService {
 
   Future<List<Book>> fetchBooks() async {
     try {
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) return [];
       final response = await _supabase
           .from(_tableName)
           .select()
+          .eq('user_id', userId)
           .order('created_at', ascending: false);
 
       _books = (response as List).map((json) => Book.fromJson(json)).toList();
