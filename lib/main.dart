@@ -229,41 +229,41 @@ class _MainScreenState extends State<MainScreen> {
                               ),
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isDropdownOpen = false;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.only(
-                                left: 12,
-                                right: 16,
-                                top: 8,
-                                bottom: 8,
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(
-                                    Icons.camera_alt,
-                                    color: Colors.black,
-                                  ),
-                                  SizedBox(
-                                    width: 8,
-                                  ),
-                                  Text(
-                                    '사진 추가',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w400,
-                                      color: Colors.black,
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                          // GestureDetector(
+                          //   onTap: () {
+                          //     setState(() {
+                          //       _isDropdownOpen = false;
+                          //     });
+                          //   },
+                          //   child: Container(
+                          //     padding: const EdgeInsets.only(
+                          //       left: 12,
+                          //       right: 16,
+                          //       top: 8,
+                          //       bottom: 8,
+                          //     ),
+                          //     child: const Row(
+                          //       children: [
+                          //         Icon(
+                          //           Icons.camera_alt,
+                          //           color: Colors.black,
+                          //         ),
+                          //         SizedBox(
+                          //           width: 8,
+                          //         ),
+                          //         Text(
+                          //           '사진 추가',
+                          //           style: TextStyle(
+                          //             fontSize: 16,
+                          //             fontWeight: FontWeight.w400,
+                          //             color: Colors.black,
+                          //             decoration: TextDecoration.none,
+                          //           ),
+                          //         ),
+                          //       ],
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
