@@ -11,16 +11,24 @@ import 'package:lit_goal/config/app_config.dart';
 import 'package:lit_goal/data/repositories/book_repository.dart';
 import 'package:lit_goal/data/services/book_service.dart';
 import 'package:lit_goal/ui/home/view_model/home_view_model.dart';
+import 'data/services/auth_service.dart';
+import 'ui/auth/widgets/login_screen.dart';
+import 'ui/auth/widgets/my_page_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await dotenv.load(fileName: ".env");
+
+  AppConfig.validateApiKeys();
 
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
-  );
+  ).then((_) {
+    debugPrint('Supabase 초기화 성공');
+  }).catchError((error) {
+    debugPrint('Supabase 초기화 실패: $error');
+  });
 
   runApp(const MyApp());
 }
@@ -45,15 +53,32 @@ class MyApp extends StatelessWidget {
             context.read<BookRepository>(),
           ),
         ),
+        ChangeNotifierProvider(create: (_) => AuthService()),
       ],
       child: MaterialApp(
-        title: '독서 분량 설정기',
+        title: 'LitGoal',
         theme: ThemeData(
-          primarySwatch: Colors.blue,
-          scaffoldBackgroundColor: Colors.white,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+          useMaterial3: true,
         ),
-        home: const MainScreen(),
+        home: const AuthWrapper(),
       ),
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthService>(
+      builder: (context, authService, _) {
+        if (authService.currentUser != null) {
+          return const MainScreen();
+        }
+        return const LoginScreen();
+      },
     );
   }
 }
@@ -72,7 +97,7 @@ class _MainScreenState extends State<MainScreen> {
   List<Widget> get _pages => [
         const HomeScreen(),
         const BookListScreen(),
-        const CalendarScreen(),
+        const MyPageScreen(),
       ];
 
   void _onItemTapped(int index) {
@@ -89,6 +114,7 @@ class _MainScreenState extends State<MainScreen> {
           body: _pages[_selectedIndex],
           bottomNavigationBar: BottomNavigationBar(
             backgroundColor: Colors.white,
+            type: BottomNavigationBarType.fixed,
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(CupertinoIcons.home),
@@ -99,12 +125,13 @@ class _MainScreenState extends State<MainScreen> {
                 label: '독서 목록',
               ),
               BottomNavigationBarItem(
-                icon: Icon(CupertinoIcons.calendar),
-                label: '캘린더',
+                icon: Icon(CupertinoIcons.person),
+                label: '마이페이지',
               ),
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Colors.blue,
+            unselectedItemColor: Colors.grey, // 또는 Colors.black54 등
             onTap: (index) {
               if (!_isDropdownOpen) {
                 _onItemTapped(index);
@@ -188,13 +215,15 @@ class _MainScreenState extends State<MainScreen> {
                                   SizedBox(
                                     width: 8,
                                   ),
-                                  Text('새 독서 시작',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w400,
-                                        color: Colors.black,
-                                        decoration: TextDecoration.none,
-                                      )),
+                                  Text(
+                                    '새 독서 시작',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w400,
+                                      color: Colors.black,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -214,17 +243,22 @@ class _MainScreenState extends State<MainScreen> {
                               ),
                               child: const Row(
                                 children: [
-                                  Icon(Icons.camera_alt, color: Colors.black),
+                                  Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.black,
+                                  ),
                                   SizedBox(
                                     width: 8,
                                   ),
-                                  Text('사진 추가',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w400,
-                                        color: Colors.black,
-                                        decoration: TextDecoration.none,
-                                      )),
+                                  Text(
+                                    '사진 추가',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w400,
+                                      color: Colors.black,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
