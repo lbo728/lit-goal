@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/auth_service.dart';
 import 'package:lit_goal/main.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -153,6 +154,13 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _isLoading ? null : _handleEmailAuth,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
                 child: Text(_isSignUp ? '회원가입' : '로그인'),
               ),
               const SizedBox(height: 16),
@@ -167,8 +175,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 '소셜 로그인',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
                 ),
               ),
               // const SizedBox(height: 16),
@@ -184,7 +193,9 @@ class _LoginScreenState extends State<LoginScreen> {
               //   ),
               //   child: const Text('카카오로 계속하기'),
               // ),
-              const SizedBox(height: 8),
+              const SizedBox(
+                height: 8,
+              ),
               ElevatedButton(
                 onPressed: _isLoading
                     ? null
@@ -194,8 +205,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black87,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: const Text('Google로 계속하기'),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SvgPicture.asset(
+                      'assets/images/logo-google.svg',
+                      width: 18,
+                      height: 18,
+                    ),
+                    const SizedBox(
+                      width: 8,
+                    ),
+                    const Text('Google로 계속하기'),
+                  ],
+                ),
               ),
             ],
           ),
