@@ -25,7 +25,10 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   late Book _currentBook;
   int? _todayStartPage;
   int? _todayTargetPage;
-  bool _todayGoalAchieved = false;
+
+  bool get _todayGoalAchieved =>
+      _todayTargetPage != null &&
+      _currentBook.currentPage >= _todayTargetPage!;
 
   @override
   void initState() {
@@ -33,7 +36,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     _currentBook = widget.book;
     _todayStartPage = _currentBook.startDate.day;
     _todayTargetPage = _currentBook.targetDate.day;
-    _todayGoalAchieved = _currentBook.currentPage >= _currentBook.totalPages;
   }
 
   Future<void> _showUpdatePageDialog() async {
@@ -131,8 +133,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       if (updatedBook != null) {
         setState(() {
           _currentBook = updatedBook;
-          _todayGoalAchieved =
-              _currentBook.currentPage >= _currentBook.totalPages;
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -167,13 +167,14 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   Future<List<Map<String, dynamic>>> fetchBookImages(String bookId) async {
     final response = await Supabase.instance.client
         .from('book_images')
-        .select('id, image_url')
+        .select('id, image_url, caption')
         .eq('book_id', bookId)
         .order('created_at', ascending: false);
     return (response as List)
         .map((e) => {
               'id': e['id'] as String,
               'image_url': e['image_url'] as String,
+              'caption': e['caption'] as String? ?? '',
             })
         .where((e) => e['image_url']!.isNotEmpty)
         .toList();
@@ -228,11 +229,61 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
     final publicUrl = storage.from('book-images').getPublicUrl(fileName);
 
-    await Supabase.instance.client.from('book_images').insert({
-      'book_id': _currentBook.id,
-      'image_url': publicUrl,
-      'caption': '',
-    });
+    if (!mounted) return;
+
+    final captionController = TextEditingController();
+    final pageController = TextEditingController();
+
+    final caption = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('페이지 및 메모 추가'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: pageController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: '페이지 번호'),
+            ),
+            TextField(
+              controller: captionController,
+              decoration: const InputDecoration(labelText: '간단한 메모'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              final page = int.tryParse(pageController.text);
+              if (page != null) {
+                Navigator.pop(context, 'Page ${pageController.text}: ${captionController.text}');
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('유효한 페이지 번호를 입력해주세요.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+
+    if (caption != null && caption.isNotEmpty) {
+      await Supabase.instance.client.from('book_images').insert({
+        'book_id': _currentBook.id,
+        'image_url': publicUrl,
+        'caption': caption,
+      });
+    }
 
     setState(() {});
   }
@@ -351,6 +402,71 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               'created_at': DateTime.parse(e['created_at'] as String),
             })
         .toList();
+  }
+
+  double _calculateAveragePagesPerDay() {
+    final daysSinceStart = DateTime.now().difference(_currentBook.startDate).inDays;
+    if (daysSinceStart <= 0) {
+      return _currentBook.currentPage.toDouble();
+    }
+    return _currentBook.currentPage / daysSinceStart;
+  }
+
+  String _predictCompletionDate() {
+    final avgPages = _calculateAveragePagesPerDay();
+    if (avgPages <= 0) {
+      return "독서를 시작해보세요!";
+    }
+    final remainingPages = _currentBook.totalPages - _currentBook.currentPage;
+    if (remainingPages <= 0) {
+      return "완독을 축하합니다!";
+    }
+    final remainingDays = (remainingPages / avgPages).ceil();
+    final predictedDate = DateTime.now().add(Duration(days: remainingDays));
+
+    if (_currentBook.targetDate == null) {
+      return "${predictedDate.month}월 ${predictedDate.day}일에 완독할 수 있어요.";
+    }
+
+    final difference = _currentBook.targetDate.difference(predictedDate).inDays;
+
+    if (difference == 0) {
+      return "목표일에 맞춰 완독할 수 있어요!";
+    } else if (difference > 0) {
+      return "목표일보다 $difference일 빠르게 완독할 수 있어요!";
+    } else {
+      return "목표일에 맞추려면 하루에 ${(remainingPages / (_currentBook.targetDate.difference(DateTime.now()).inDays + 1)).toStringAsFixed(1)}페이지씩 더 읽어야 해요.";
+    }
+  }
+
+  Widget _buildReadingPaceInfo() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '일 평균 ${_calculateAveragePagesPerDay().toStringAsFixed(1)} 페이지를 읽고 있어요',
+            style: TextStyle(
+              color: Colors.blue[800],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _predictCompletionDate(),
+            style: TextStyle(
+              color: Colors.blue[700],
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -482,7 +598,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'D-${(_currentBook.startDate != null) ? (_currentBook.targetDate.difference(_currentBook.startDate).inDays + 1) : 0}',
+                              'D-${(_currentBook.targetDate != null) ? (_currentBook.targetDate.difference(DateTime.now()).inDays + 1) : '?'}',
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.orange,
@@ -643,21 +759,23 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          // 달성 여부 체크
+                          // 달성 여부 자동 계산
                           Row(
                             children: [
                               const Text('달성 여부: ',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
                                   )),
-                              Checkbox(
-                                value: _todayGoalAchieved,
-                                onChanged: (val) {
-                                  setState(() {
-                                    _todayGoalAchieved = val ?? false;
-                                  });
-                                },
+                              Icon(
+                                _todayGoalAchieved
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                color: _todayGoalAchieved
+                                    ? Colors.green
+                                    : Colors.red,
+                                size: 20,
                               ),
+                              const SizedBox(width: 4),
                               Text(_todayGoalAchieved ? '달성' : '미달성',
                                   style: TextStyle(
                                     color: _todayGoalAchieved
@@ -667,6 +785,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                   )),
                             ],
                           ),
+                          const SizedBox(height: 16),
+                          _buildReadingPaceInfo(),
                         ],
                       ),
                     ),
@@ -773,43 +893,94 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                         final img = images[index];
                         final imgUrl = img['image_url']!;
                         final imgId = img['id']!;
-                        return Stack(
-                          children: [
-                            Positioned.fill(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  imgUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Container(
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.broken_image,
-                                        color: Colors.grey),
+                        final caption = img['caption'] as String? ?? '';
+
+                        return GestureDetector(
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Image.network(imgUrl),
+                                    const SizedBox(height: 8),
+                                    Text(caption),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('닫기'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.network(
+                                    imgUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        Container(
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.broken_image,
+                                          color: Colors.grey),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: GestureDetector(
-                                onTap: () => _confirmDeleteImage(imgId, imgUrl),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.5),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  padding: const EdgeInsets.all(2),
-                                  child: const Icon(
-                                    Icons.close,
-                                    size: 18,
-                                    color: Colors.white,
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: GestureDetector(
+                                  onTap: () => _confirmDeleteImage(imgId, imgUrl),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.5),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    padding: const EdgeInsets.all(2),
+                                    child: const Icon(
+                                      Icons.close,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                              if (caption.isNotEmpty)
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.6),
+                                      borderRadius: const BorderRadius.only(
+                                        bottomLeft: Radius.circular(8),
+                                        bottomRight: Radius.circular(8),
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    child: Text(
+                                      caption,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         );
                       },
                     );
