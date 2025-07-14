@@ -16,9 +16,14 @@ import 'data/services/auth_service.dart';
 import 'ui/auth/widgets/login_screen.dart';
 import 'ui/auth/widgets/my_page_screen.dart';
 
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+
+  // Initialize AdMob SDK
+  MobileAds.instance.initialize();
 
   AppConfig.validateApiKeys();
 

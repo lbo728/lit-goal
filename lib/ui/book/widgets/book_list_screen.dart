@@ -4,6 +4,8 @@ import '../../../data/services/book_service.dart';
 import 'book_detail_screen.dart';
 import '../../core/ui/book_image_widget.dart';
 
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
 class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
 
@@ -14,11 +16,35 @@ class BookListScreen extends StatefulWidget {
 class _BookListScreenState extends State<BookListScreen> {
   final BookService _bookService = BookService();
   bool _isLoading = true;
+  BannerAd? _bannerAd;
 
   @override
   void initState() {
     super.initState();
     _loadBooks();
+    _loadBannerAd();
+  }
+
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Test Ad Unit ID
+      request: const AdRequest(),
+      size: AdSize.banner,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          setState(() {});
+        },
+        onAdFailedToLoad: (ad, err) {
+          ad.dispose();
+        },
+      ),
+    )..load();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBooks() async {
@@ -64,6 +90,13 @@ class _BookListScreenState extends State<BookListScreen> {
             ? const Center(child: CircularProgressIndicator())
             : _buildContentWithRefresh(),
       ),
+      bottomNavigationBar: _bannerAd != null
+          ? SizedBox(
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            )
+          : null,
     );
   }
 

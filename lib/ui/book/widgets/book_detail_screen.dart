@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -25,6 +26,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   late Book _currentBook;
   int? _todayStartPage;
   int? _todayTargetPage;
+  InterstitialAd? _interstitialAd;
 
   bool get _todayGoalAchieved =>
       _todayTargetPage != null &&
@@ -36,6 +38,28 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     _currentBook = widget.book;
     _todayStartPage = _currentBook.startDate.day;
     _todayTargetPage = _currentBook.targetDate.day;
+    _loadInterstitialAd();
+  }
+
+  @override
+  void dispose() {
+    _interstitialAd?.dispose();
+    super.dispose();
+  }
+
+  void _loadInterstitialAd() {
+    InterstitialAd.load(
+      adUnitId: 'ca-app-pub-3940256099942544/1033173712', // Test Ad Unit ID
+      request: const AdRequest(),
+      adLoadCallback: InterstitialAdLoadCallback(
+        onAdLoaded: (ad) {
+          _interstitialAd = ad;
+        },
+        onAdFailedToLoad: (err) {
+          _interstitialAd = null;
+        },
+      ),
+    );
   }
 
   Future<void> _showUpdatePageDialog() async {
@@ -127,6 +151,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   Future<void> _updateCurrentPage(int newPage) async {
+    final wasCompleted = _currentBook.currentPage >= _currentBook.totalPages;
+
     try {
       final updatedBook =
           await _bookService.updateCurrentPage(_currentBook.id!, newPage);
@@ -134,6 +160,23 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         setState(() {
           _currentBook = updatedBook;
         });
+
+        final isNowCompleted = _currentBook.currentPage >= _currentBook.totalPages;
+
+        if (!wasCompleted && isNowCompleted) {
+          _interstitialAd?.fullScreenContentCallback = FullScreenContentCallback(
+            onAdDismissedFullScreenContent: (ad) {
+              ad.dispose();
+              _loadInterstitialAd();
+            },
+            onAdFailedToShowFullScreenContent: (ad, err) {
+              ad.dispose();
+              _loadInterstitialAd();
+            },
+          );
+          _interstitialAd?.show();
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
