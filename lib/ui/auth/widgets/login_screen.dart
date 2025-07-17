@@ -15,7 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
+  bool _isEmailLoading = false;
+  bool _isGoogleLoading = false;
   bool _isSignUp = false;
   String? _name;
 
@@ -29,51 +30,122 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleEmailAuth() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    setState(() => _isEmailLoading = true);
 
     final authService = context.read<AuthService>();
     String? errorMessage;
 
-    if (_isSignUp) {
-      errorMessage = await authService.signUpWithEmail(
-        email: _emailController.text,
-        password: _passwordController.text,
-        name: _name,
-      );
-    } else {
-      errorMessage = await authService.signInWithEmail(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
-    }
+    try {
+      if (_isSignUp) {
+        errorMessage = await authService.signUpWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+          name: _name,
+        );
+      } else {
+        errorMessage = await authService.signInWithEmail(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+      }
 
-    setState(() => _isLoading = false);
+      setState(() => _isEmailLoading = false);
 
-    if (errorMessage != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mapAuthError(errorMessage))),
-      );
+      if (errorMessage != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mapAuthError(errorMessage)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else if (mounted) {
+        if (!_isSignUp) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('로그인에 성공했습니다!'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const MainScreen()),
+              (route) => false,
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('회원가입이 완료되었습니다. 이메일을 확인해주세요.'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          setState(() => _isSignUp = false);
+        }
+      }
+    } catch (e) {
+      setState(() => _isEmailLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> _handleSocialAuth(
       Future<String?> Function() signInMethod) async {
-    setState(() => _isLoading = true);
+    setState(() => _isGoogleLoading = true);
 
-    final errorMessage = await signInMethod();
+    try {
+      final errorMessage = await signInMethod();
 
-    setState(() => _isLoading = false);
+      setState(() => _isGoogleLoading = false);
 
-    if (errorMessage != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(mapAuthError(errorMessage))),
-      );
-    } else if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-        (route) => false,
-      );
+      if (errorMessage != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(mapAuthError(errorMessage)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else if (mounted) {
+        // 소셜 로그인 성공
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('로그인에 성공했습니다!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // 잠시 후 메인 화면으로 이동
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const MainScreen()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isGoogleLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -95,6 +167,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAnyLoading = _isEmailLoading || _isGoogleLoading;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_isSignUp ? '회원가입' : '로그인'),
@@ -113,6 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (value) => _name = value,
+                  enabled: !isAnyLoading,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -123,6 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.emailAddress,
+                enabled: !isAnyLoading,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return '이메일을 입력해주세요.';
@@ -141,6 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
                 obscureText: true,
+                enabled: !isAnyLoading,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return '비밀번호를 입력해주세요.';
@@ -153,19 +230,30 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _isLoading ? null : _handleEmailAuth,
+                onPressed: _isEmailLoading ? null : _handleEmailAuth,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: Text(_isSignUp ? '회원가입' : '로그인'),
+                child: _isEmailLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(_isSignUp ? '회원가입' : '로그인'),
               ),
               const SizedBox(height: 16),
               TextButton(
-                onPressed: _isLoading
+                onPressed: isAnyLoading
                     ? null
                     : () => setState(() => _isSignUp = !_isSignUp),
                 child: Text(_isSignUp ? '이미 계정이 있나요? 로그인' : '계정이 없나요? 회원가입'),
@@ -180,24 +268,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.black,
                 ),
               ),
-              // const SizedBox(height: 16),
-              // ElevatedButton(
-              //   onPressed: _isLoading
-              //       ? null
-              //       : () => _handleSocialAuth(
-              //             context.read<AuthService>().signInWithKakao,
-              //           ),
-              //   style: ElevatedButton.styleFrom(
-              //     backgroundColor: const Color(0xFFFEE500),
-              //     foregroundColor: Colors.black87,
-              //   ),
-              //   child: const Text('카카오로 계속하기'),
-              // ),
-              const SizedBox(
-                height: 8,
-              ),
+              const SizedBox(height: 8),
               ElevatedButton(
-                onPressed: _isLoading
+                onPressed: _isGoogleLoading
                     ? null
                     : () => _handleSocialAuth(
                           context.read<AuthService>().signInWithGoogle,
@@ -208,21 +281,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SvgPicture.asset(
-                      'assets/images/logo-google.svg',
-                      width: 18,
-                      height: 18,
-                    ),
-                    const SizedBox(
-                      width: 8,
-                    ),
-                    const Text('Google로 계속하기'),
-                  ],
-                ),
+                child: _isGoogleLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.black87),
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SvgPicture.asset(
+                            'assets/images/logo-google.svg',
+                            width: 18,
+                            height: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Google로 계속하기'),
+                        ],
+                      ),
               ),
             ],
           ),

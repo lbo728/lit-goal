@@ -5,8 +5,7 @@ import 'package:lit_goal/ui/reading/widgets/reading_chart_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:lit_goal/ui/book/widgets/book_list_screen.dart';
-import 'package:lit_goal/ui/calendar/widgets/calendar_screen.dart';
-import 'package:lit_goal/ui/home/widgets/home_screen.dart';
+
 import 'package:lit_goal/ui/reading/widgets/reading_start_screen.dart';
 import 'package:lit_goal/config/app_config.dart';
 import 'package:lit_goal/data/repositories/book_repository.dart';
