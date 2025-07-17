@@ -5,8 +5,6 @@ import 'package:lit_goal/ui/reading/widgets/reading_chart_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:lit_goal/ui/book/widgets/book_list_screen.dart';
-import 'package:lit_goal/ui/calendar/widgets/calendar_screen.dart';
-import 'package:lit_goal/ui/home/widgets/home_screen.dart';
 import 'package:lit_goal/ui/reading/widgets/reading_start_screen.dart';
 import 'package:lit_goal/config/app_config.dart';
 import 'package:lit_goal/data/repositories/book_repository.dart';
@@ -23,7 +21,9 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
 
   // Initialize AdMob SDK
-  MobileAds.instance.initialize();
+  MobileAds.instance.initialize().then((InitializationStatus status) {
+    print('AdMob 초기화 완료: ${status.adapterStatuses}');
+  });
 
   AppConfig.validateApiKeys();
 
@@ -137,7 +137,7 @@ class _MainScreenState extends State<MainScreen> {
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Colors.blue,
-            unselectedItemColor: Colors.grey, // 또는 Colors.black54 등
+            unselectedItemColor: Colors.grey,
             onTap: (index) {
               if (!_isDropdownOpen) {
                 _onItemTapped(index);

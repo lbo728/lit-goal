@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../../../config/admob_config.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -29,8 +30,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   InterstitialAd? _interstitialAd;
 
   bool get _todayGoalAchieved =>
-      _todayTargetPage != null &&
-      _currentBook.currentPage >= _todayTargetPage!;
+      _todayTargetPage != null && _currentBook.currentPage >= _todayTargetPage!;
+
+  BannerAd? _bannerAd;
 
   @override
   void initState() {
@@ -38,24 +40,46 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     _currentBook = widget.book;
     _todayStartPage = _currentBook.startDate.day;
     _todayTargetPage = _currentBook.targetDate.day;
+    _loadBannerAd();
     _loadInterstitialAd();
   }
 
   @override
   void dispose() {
     _interstitialAd?.dispose();
+    _bannerAd?.dispose();
     super.dispose();
+  }
+
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: AdMobConfig.bannerAdUnitId,
+      request: const AdRequest(),
+      size: AdSize.banner,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          print('AdMob: 배너 광고 로드 성공');
+          setState(() {});
+        },
+        onAdFailedToLoad: (ad, err) {
+          print('AdMob: 배너 광고 로드 실패 - ${err.message}');
+          ad.dispose();
+        },
+      ),
+    )..load();
   }
 
   void _loadInterstitialAd() {
     InterstitialAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/1033173712', // Test Ad Unit ID
+      adUnitId: AdMobConfig.interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          print('AdMob: 전면 광고 로드 성공');
           _interstitialAd = ad;
         },
         onAdFailedToLoad: (err) {
+          print('AdMob: 전면 광고 로드 실패 - ${err.message}');
           _interstitialAd = null;
         },
       ),
@@ -161,20 +185,32 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           _currentBook = updatedBook;
         });
 
-        final isNowCompleted = _currentBook.currentPage >= _currentBook.totalPages;
+        final isNowCompleted =
+            _currentBook.currentPage >= _currentBook.totalPages;
 
         if (!wasCompleted && isNowCompleted) {
-          _interstitialAd?.fullScreenContentCallback = FullScreenContentCallback(
-            onAdDismissedFullScreenContent: (ad) {
-              ad.dispose();
-              _loadInterstitialAd();
-            },
-            onAdFailedToShowFullScreenContent: (ad, err) {
-              ad.dispose();
-              _loadInterstitialAd();
-            },
-          );
-          _interstitialAd?.show();
+          print('AdMob: 완독 달성, 광고 표시 시도');
+          if (_interstitialAd != null) {
+            _interstitialAd?.fullScreenContentCallback =
+                FullScreenContentCallback(
+              onAdDismissedFullScreenContent: (ad) {
+                print('AdMob: 광고 닫힘');
+                ad.dispose();
+                _loadInterstitialAd();
+              },
+              onAdFailedToShowFullScreenContent: (ad, err) {
+                print('AdMob: 광고 표시 실패 - ${err.message}');
+                ad.dispose();
+                _loadInterstitialAd();
+              },
+              onAdShowedFullScreenContent: (ad) {
+                print('AdMob: 광고 표시 성공');
+              },
+            );
+            _interstitialAd?.show();
+          } else {
+            print('AdMob: 광고가 로드되지 않음');
+          }
         }
 
         if (mounted) {
@@ -304,7 +340,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             onPressed: () {
               final page = int.tryParse(pageController.text);
               if (page != null) {
-                Navigator.pop(context, 'Page ${pageController.text}: ${captionController.text}');
+                Navigator.pop(context,
+                    'Page ${pageController.text}: ${captionController.text}');
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -448,7 +485,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   }
 
   double _calculateAveragePagesPerDay() {
-    final daysSinceStart = DateTime.now().difference(_currentBook.startDate).inDays;
+    final daysSinceStart =
+        DateTime.now().difference(_currentBook.startDate).inDays;
     if (daysSinceStart <= 0) {
       return _currentBook.currentPage.toDouble();
     }
@@ -466,10 +504,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     }
     final remainingDays = (remainingPages / avgPages).ceil();
     final predictedDate = DateTime.now().add(Duration(days: remainingDays));
-
-    if (_currentBook.targetDate == null) {
-      return "${predictedDate.month}월 ${predictedDate.day}일에 완독할 수 있어요.";
-    }
 
     final difference = _currentBook.targetDate.difference(predictedDate).inDays;
 
@@ -968,8 +1002,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                   child: Image.network(
                                     imgUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        Container(
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
                                       color: Colors.grey[200],
                                       child: const Icon(Icons.broken_image,
                                           color: Colors.grey),
@@ -981,7 +1016,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                 top: 4,
                                 right: 4,
                                 child: GestureDetector(
-                                  onTap: () => _confirmDeleteImage(imgId, imgUrl),
+                                  onTap: () =>
+                                      _confirmDeleteImage(imgId, imgUrl),
                                   child: Container(
                                     decoration: BoxDecoration(
                                       color: Colors.black.withOpacity(0.5),
@@ -1159,6 +1195,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_bannerAd != null)
+            SizedBox(
+              width: _bannerAd!.size.width.toDouble(),
+              height: _bannerAd!.size.height.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),

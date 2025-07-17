@@ -5,6 +5,7 @@ import 'book_detail_screen.dart';
 import '../../core/ui/book_image_widget.dart';
 
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../../../config/admob_config.dart';
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
@@ -27,14 +28,16 @@ class _BookListScreenState extends State<BookListScreen> {
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Test Ad Unit ID
+      adUnitId: AdMobConfig.bannerAdUnitId,
       request: const AdRequest(),
       size: AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
+          print('AdMob: 배너 광고 로드 성공');
           setState(() {});
         },
         onAdFailedToLoad: (ad, err) {
+          print('AdMob: 배너 광고 로드 실패 - ${err.message}');
           ad.dispose();
         },
       ),
@@ -87,7 +90,9 @@ class _BookListScreenState extends State<BookListScreen> {
       ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: CircularProgressIndicator(),
+              )
             : _buildContentWithRefresh(),
       ),
       bottomNavigationBar: _bannerAd != null
@@ -129,7 +134,9 @@ class _BookListScreenState extends State<BookListScreen> {
             size: 80,
             color: Colors.grey,
           ),
-          SizedBox(height: 16),
+          SizedBox(
+            height: 16,
+          ),
           Text(
             '아직 시작한 독서가 없습니다',
             style: TextStyle(
@@ -201,7 +208,9 @@ class _BookListScreenState extends State<BookListScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(
+              width: 16,
+            ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,7 +224,9 @@ class _BookListScreenState extends State<BookListScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(
+                    height: 4,
+                  ),
                   Text(
                     'D-${daysPassed + 1} (${progressPercentage.toStringAsFixed(0)}% 진행)',
                     style: TextStyle(
@@ -223,7 +234,9 @@ class _BookListScreenState extends State<BookListScreen> {
                       color: Colors.grey[600],
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(
+                    height: 4,
+                  ),
                   Text(
                     '${book.currentPage}/${book.totalPages}페이지',
                     style: TextStyle(
