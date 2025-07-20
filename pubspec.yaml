@@ -1,5 +1,5 @@
 name: lit_goal
-description: "A new Flutter project."
+description: "독서 목표를 설정하고 독서 진행 상황을 추적하는 앱입니다."
 
 publish_to: "none"
 
@@ -20,11 +20,27 @@ dependencies:
   image_picker: ^1.1.2
   fl_chart: ^0.66.0
   flutter_svg: ^2.0.17
+  flutter_native_splash: ^2.4.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/images/splash.png
+  ios: true
+  android: true
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/logo.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
