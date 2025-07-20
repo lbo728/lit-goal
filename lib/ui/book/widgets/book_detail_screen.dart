@@ -251,7 +251,6 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               ListTile(
                 leading: const Icon(Icons.camera_alt),
                 title: const Text('카메라 촬영하기'),
-                enabled: isCameraAvailable && !Platform.isIOS ? true : false,
                 onTap: isCameraAvailable && !Platform.isIOS
                     ? () async {
                         Navigator.pop(context);
