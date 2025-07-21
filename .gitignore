@@ -49,4 +49,8 @@ app.*.map.json
 .env.prod
 .env.local
 
+# Android signing
+android/key.properties
+android/app/*.jks
+
 .cursor/

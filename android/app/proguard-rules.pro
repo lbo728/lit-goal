@@ -24,4 +24,9 @@
 -dontwarn okio.**
 -dontwarn javax.annotation.**
 -dontwarn org.conscrypt.**
--keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase 
+-keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
+
+# Play Core
+-keep class com.google.android.play.** { *; }
+-keep interface com.google.android.play.** { *; }
+-dontwarn com.google.android.play.**
