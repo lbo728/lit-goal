@@ -54,6 +54,9 @@
 		</dict>
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
+
+		<key>UIStatusBarHidden</key>
+		<false/>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>
@@ -64,8 +67,14 @@
 					<string>litgoal</string>
 				</array>
 			</dict>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>signinwithapple</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>signinwithapple</string>
+				</array>
+			</dict>
 		</array>
-		<key>UIStatusBarHidden</key>
-		<false/>
 	</dict>
 </plist>

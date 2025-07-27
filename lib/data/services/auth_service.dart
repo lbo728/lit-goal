@@ -72,7 +72,7 @@ class AuthService extends ChangeNotifier {
     required String password,
   }) async {
     try {
-      final AuthResponse response = await _supabase.auth.signInWithPassword(
+      await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
@@ -184,5 +184,40 @@ class AuthService extends ChangeNotifier {
     _currentUser = UserModel.fromUser(user.user!);
     notifyListeners();
     return _currentUser;
+  }
+
+  Future<bool> deleteAccount() async {
+    try {
+      final userId = _currentUser?.id;
+      if (userId == null) return false;
+
+      // 1. 사용자 데이터 삭제
+      await _supabase.from('users').delete().eq('id', userId);
+
+      // 2. 사용자 관련 데이터 삭제 (독서 기록, 목표 등)
+      await _supabase.from('reading_goals').delete().eq('user_id', userId);
+      await _supabase.from('reading_progress').delete().eq('user_id', userId);
+      await _supabase.from('books').delete().eq('user_id', userId);
+
+      // 3. 아바타 이미지 삭제
+      try {
+        await _supabase.storage.from('avatars').remove(['$userId/avatar.png']);
+      } catch (e) {
+        // 아바타가 없을 수 있으므로 무시
+        print('아바타 삭제 중 오류 (무시됨): $e');
+      }
+
+      // 4. Supabase Auth에서 사용자 삭제
+      await _supabase.auth.admin.deleteUser(userId);
+
+      // 5. 로컬 상태 정리
+      _currentUser = null;
+      notifyListeners();
+
+      return true;
+    } catch (e) {
+      print('계정 삭제 오류: $e');
+      return false;
+    }
   }
 }

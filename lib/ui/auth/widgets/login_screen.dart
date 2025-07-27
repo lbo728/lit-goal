@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/apple_auth_service.dart';
 import 'package:lit_goal/main.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -17,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isEmailLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _isSignUp = false;
   String? _name;
 
@@ -100,14 +102,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _handleSocialAuth(
-      Future<String?> Function() signInMethod) async {
-    setState(() => _isGoogleLoading = true);
+  Future<void> _handleSocialAuth(Future<String?> Function() signInMethod,
+      {bool isApple = false}) async {
+    setState(() {
+      if (isApple) {
+        _isAppleLoading = true;
+      } else {
+        _isGoogleLoading = true;
+      }
+    });
 
     try {
       final errorMessage = await signInMethod();
 
-      setState(() => _isGoogleLoading = false);
+      setState(() {
+        if (isApple) {
+          _isAppleLoading = false;
+        } else {
+          _isGoogleLoading = false;
+        }
+      });
 
       if (errorMessage != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,7 +151,13 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       }
     } catch (e) {
-      setState(() => _isGoogleLoading = false);
+      setState(() {
+        if (isApple) {
+          _isAppleLoading = false;
+        } else {
+          _isGoogleLoading = false;
+        }
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -146,6 +166,19 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<String?> _handleAppleSignIn() async {
+    try {
+      final response = await AppleAuthService.signInWithApple();
+      if (response?.user != null) {
+        return null; // 성공
+      } else {
+        return 'Apple 로그인에 실패했습니다.';
+      }
+    } catch (e) {
+      return 'Apple 로그인 중 오류가 발생했습니다: $e';
     }
   }
 
@@ -167,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAnyLoading = _isEmailLoading || _isGoogleLoading;
+    final isAnyLoading = _isEmailLoading || _isGoogleLoading || _isAppleLoading;
 
     return Scaffold(
       appBar: AppBar(
@@ -305,6 +338,52 @@ class _LoginScreenState extends State<LoginScreen> {
                           const Text('Google로 계속하기'),
                         ],
                       ),
+              ),
+              const SizedBox(height: 12),
+              FutureBuilder<bool>(
+                future: AppleAuthService.isAvailable(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data == true) {
+                    return ElevatedButton(
+                      onPressed: _isAppleLoading
+                          ? null
+                          : () => _handleSocialAuth(
+                                _handleAppleSignIn,
+                                isApple: true,
+                              ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: _isAppleLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.apple,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text('Apple로 계속하기'),
+                              ],
+                            ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
             ],
           ),

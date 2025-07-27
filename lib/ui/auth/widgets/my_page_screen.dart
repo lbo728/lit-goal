@@ -17,7 +17,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
   late TextEditingController _nicknameController;
 
   File? _pendingAvatarFile;
-  String? _pendingAvatarPath;
 
   @override
   void didChangeDependencies() {
@@ -36,6 +35,74 @@ class _MyPageScreenState extends State<MyPageScreen> {
   void initState() {
     super.initState();
     Future.microtask(() => context.read<AuthService>().fetchCurrentUser());
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('계정 삭제'),
+          content: const Text(
+            '정말로 계정을 삭제하시겠습니까?\n\n'
+            '이 작업은 되돌릴 수 없으며, 모든 데이터가 영구적으로 삭제됩니다.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _deleteAccount();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('삭제'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      final authService = context.read<AuthService>();
+      final success = await authService.deleteAccount();
+
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('계정이 성공적으로 삭제되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('계정 삭제에 실패했습니다. 다시 시도해주세요.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -80,7 +147,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   if (picked != null) {
                                     setState(() {
                                       _pendingAvatarFile = File(picked.path);
-                                      _pendingAvatarPath = picked.path;
                                     });
                                   }
                                 },
@@ -109,7 +175,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                         .uploadAvatar(_pendingAvatarFile!);
                                     setState(() {
                                       _pendingAvatarFile = null;
-                                      _pendingAvatarPath = null;
                                     });
                                   }
                                 },
@@ -120,7 +185,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 onPressed: () {
                                   setState(() {
                                     _pendingAvatarFile = null;
-                                    _pendingAvatarPath = null;
                                   });
                                 },
                                 child: const Text('취소'),
@@ -211,6 +275,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('로그아웃'),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _showDeleteAccountDialog(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red[700],
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('계정 삭제'),
                 ),
               ],
             ),
