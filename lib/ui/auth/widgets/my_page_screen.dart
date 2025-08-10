@@ -150,15 +150,82 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     });
                                   }
                                 },
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundImage: _pendingAvatarFile != null
-                                ? FileImage(_pendingAvatarFile!)
-                                : (user.avatarUrl != null
-                                    ? NetworkImage(user.avatarUrl!)
-                                    : const AssetImage(
-                                            'assets/images/default_avatar.png')
-                                        as ImageProvider),
+                          child: SizedBox(
+                            width: 80,
+                            height: 80,
+                            child: ClipOval(
+                              child: _pendingAvatarFile != null
+                                  ? Image.file(
+                                      _pendingAvatarFile!,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : (user.avatarUrl != null &&
+                                          user.avatarUrl!.isNotEmpty)
+                                      ? Image.network(
+                                          user.avatarUrl!,
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder: (
+                                            context,
+                                            child,
+                                            loadingProgress,
+                                          ) {
+                                            if (loadingProgress == null) {
+                                              return child;
+                                            }
+                                            return Container(
+                                              width: 80,
+                                              height: 80,
+                                              color: Colors.grey[200],
+                                              child: const Center(
+                                                child: SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          errorBuilder: (
+                                            context,
+                                            error,
+                                            stackTrace,
+                                          ) {
+                                            return Container(
+                                              width: 80,
+                                              height: 80,
+                                              decoration: BoxDecoration(
+                                                color: Colors.lightBlue[100],
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.person,
+                                                size: 40,
+                                                color: Colors.blue,
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          width: 80,
+                                          height: 80,
+                                          decoration: BoxDecoration(
+                                            color: Colors.lightBlue[100],
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.person,
+                                            size: 40,
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                            ),
                           ),
                         ),
                         if (_pendingAvatarFile != null) ...[
@@ -260,30 +327,36 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   Text('이메일: ${user.email}'),
                   const SizedBox(height: 32),
                 ],
-                ElevatedButton(
-                  onPressed: () async {
-                    await context.read<AuthService>().signOut();
-                    if (context.mounted) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+                Center(
+                  child: Column(
+                    children: [
+                      ElevatedButton(
+                        onPressed: () async {
+                          await context.read<AuthService>().signOut();
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('로그아웃'),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () => _showDeleteAccountDialog(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
+                        child: const Text('계정 삭제'),
+                      ),
+                    ],
                   ),
-                  child: const Text('로그아웃'),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => _showDeleteAccountDialog(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red[700],
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('계정 삭제'),
                 ),
               ],
             ),
