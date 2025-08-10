@@ -23,6 +23,7 @@ dependencies:
   flutter_native_splash: ^2.4.4
   sign_in_with_apple: ^5.0.0
   crypto: ^3.0.3
+  supabase_auth_ui: ^0.4.4
 
 dev_dependencies:
   flutter_test:
@@ -50,3 +51,8 @@ flutter:
   assets:
     - assets/images/
     - .env
+
+dependency_overrides:
+  # Fix iOS build error: Color.withValues not in Flutter 3.16.
+  # Pin to a version compatible with older Flutter SDKs.
+  font_awesome_flutter: 10.6.0

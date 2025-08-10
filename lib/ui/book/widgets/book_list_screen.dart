@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../../../domain/models/book.dart';
 import '../../../data/services/book_service.dart';
-import 'book_detail_screen.dart';
 import '../../core/ui/book_image_widget.dart';
+import 'book_detail_screen.dart';
 
 class BookListScreen extends StatefulWidget {
   const BookListScreen({super.key});
@@ -54,7 +55,7 @@ class _BookListScreenState extends State<BookListScreen> {
         centerTitle: false,
         titleTextStyle: const TextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: Colors.black,
         ),
         scrolledUnderElevation: 0,

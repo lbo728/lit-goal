@@ -34,7 +34,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<AuthService>().fetchCurrentUser());
+    // Future.microtask(() => context.read<AuthService>().fetchCurrentUser());
   }
 
   void _showDeleteAccountDialog(BuildContext context) {
@@ -116,13 +116,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
         centerTitle: false,
         titleTextStyle: const TextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: Colors.black,
         ),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await authService.fetchCurrentUser();
+          // await authService.fetchCurrentUser();
 
           setState(() {});
         },

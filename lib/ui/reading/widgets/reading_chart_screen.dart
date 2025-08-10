@@ -49,7 +49,7 @@ class ReadingChartScreen extends StatelessWidget {
         centerTitle: false,
         titleTextStyle: const TextStyle(
           fontSize: 20,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w600,
           color: Colors.black,
         ),
       ),

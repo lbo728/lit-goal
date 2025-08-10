@@ -1,11 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'package:lit_goal/ui/reading/widgets/reading_chart_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:lit_goal/ui/book/widgets/book_list_screen.dart';
-
 import 'package:lit_goal/ui/reading/widgets/reading_start_screen.dart';
 import 'package:lit_goal/config/app_config.dart';
 import 'package:lit_goal/data/repositories/book_repository.dart';
@@ -132,7 +132,7 @@ class _MainScreenState extends State<MainScreen> {
             ],
             currentIndex: _selectedIndex,
             selectedItemColor: Colors.blue,
-            unselectedItemColor: Colors.grey, // 또는 Colors.black54 등
+            unselectedItemColor: Colors.grey,
             onTap: (index) {
               if (!_isDropdownOpen) {
                 _onItemTapped(index);
@@ -143,7 +143,9 @@ class _MainScreenState extends State<MainScreen> {
         if (_isDropdownOpen)
           AnimatedOpacity(
             opacity: _isDropdownOpen ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 200),
+            duration: const Duration(
+              milliseconds: 200,
+            ),
             curve: Curves.easeInOut,
             child: GestureDetector(
               onTap: () {
@@ -166,9 +168,13 @@ class _MainScreenState extends State<MainScreen> {
             children: [
               AnimatedOpacity(
                 opacity: _isDropdownOpen ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
+                duration: const Duration(
+                  milliseconds: 200,
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 64),
+                  padding: const EdgeInsets.only(
+                    bottom: 64,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(

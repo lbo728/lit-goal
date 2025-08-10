@@ -147,7 +147,7 @@ class AuthService extends ChangeNotifier {
     await _supabase
         .from('users')
         .update({'nickname': nickname}).eq('id', userId);
-    await fetchCurrentUser();
+    // await fetchCurrentUser();
     notifyListeners();
   }
 
@@ -165,19 +165,19 @@ class AuthService extends ChangeNotifier {
 
     await _supabase.from('users').update({'avatar_url': url}).eq('id', userId);
 
-    await fetchCurrentUser();
+    // await fetchCurrentUser();
     notifyListeners();
   }
 
-  Future<UserModel?> fetchCurrentUser() async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) return null;
-    final data =
-        await _supabase.from('users').select().eq('id', userId).single();
-    _currentUser = UserModel.fromJson(data);
-    notifyListeners();
-    return _currentUser;
-  }
+  // Future<UserModel?> fetchCurrentUser() async {
+  //   final userId = _supabase.auth.currentUser?.id;
+  //   if (userId == null) return null;
+  //   final data =
+  //       await _supabase.from('users').select().eq('id', userId).single();
+  //   _currentUser = UserModel.fromJson(data);
+  //   notifyListeners();
+  //   return _currentUser;
+  // }
 
   Future<UserModel?> getCurrentUser() async {
     final user = await _supabase.auth.getUser();

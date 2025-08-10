@@ -1,12 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:fl_chart/fl_chart.dart';
+
 import '../../../domain/models/book.dart';
 import '../../../data/services/book_service.dart';
 import '../../core/ui/book_image_widget.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:fl_chart/fl_chart.dart';
 
 class BookDetailScreen extends StatefulWidget {
   final Book book;
@@ -251,7 +253,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               ListTile(
                 leading: const Icon(Icons.camera_alt),
                 title: const Text('카메라 촬영하기'),
-                onTap: isCameraAvailable && !Platform.isIOS
+                onTap: isCameraAvailable && Platform.isIOS
                     ? () async {
                         Navigator.pop(context);
                         await _pickAndUploadBookImage(ImageSource.camera);
@@ -475,7 +477,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.orange.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(4),
@@ -489,7 +493,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(
+                            height: 16,
+                          ),
                           Row(
                             children: [
                               const Text(
@@ -512,12 +518,15 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(
+                            height: 8,
+                          ),
                           Row(
                             children: [
                               const Text('목표 완료일: ',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w500)),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  )),
                               Expanded(
                                 child: Text(
                                   _currentBook.targetDate != null
@@ -564,8 +573,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                       ? '설정하기'
                                       : '변경하기',
                                   style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],
@@ -594,13 +604,21 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                           ),
                           Row(
                             children: [
-                              const Text('오늘의 분량: ',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w500)),
+                              const Text(
+                                '오늘의 분량: ',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               if (_todayStartPage != null &&
                                   _todayTargetPage != null)
                                 Text(
-                                    '$_todayStartPage ~ $_todayTargetPage 페이지'),
+                                  '$_todayStartPage ~ $_todayTargetPage 페이지',
+                                  style: const TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 14,
+                                  ),
+                                ),
                               if (_todayStartPage == null ||
                                   _todayTargetPage == null)
                                 const Text(
@@ -905,7 +923,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                       builder: (context) => AlertDialog(
                         title: const Text('책 정보 삭제'),
                         content: const Text(
-                            '정말 이 책 정보를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.'),
+                          '정말 이 책 정보를 삭제하시겠습니까?\n삭제 후 복구할 수 없습니다.',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, false),
@@ -913,8 +932,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(context, true),
-                            child: const Text('삭제',
-                                style: TextStyle(color: Colors.red)),
+                            child: const Text(
+                              '삭제',
+                              style: TextStyle(
+                                color: Colors.red,
+                              ),
+                            ),
                           ),
                         ],
                       ),
