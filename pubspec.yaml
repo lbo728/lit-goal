@@ -15,7 +15,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.1.0
   flutter_dotenv: ^5.1.0
-  supabase_flutter: ^2.5.6
+  supabase_flutter: ^2.3.4
   provider: ^6.1.2
   image_picker: ^1.1.2
   fl_chart: ^0.66.0
@@ -24,6 +24,11 @@ dependencies:
   sign_in_with_apple: ^5.0.0
   crypto: ^3.0.3
   supabase_auth_ui: ^0.4.4
+  # 알림 및 시간대 처리
+  flutter_local_notifications: ^17.2.1
+  timezone: ^0.9.2
+  flutter_timezone: ^1.0.8
+  shared_preferences: ^2.2.3
 
 dev_dependencies:
   flutter_test:

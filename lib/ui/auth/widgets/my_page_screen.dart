@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../../data/services/auth_service.dart';
+import '../../../data/services/notification_service.dart';
 import 'login_screen.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
@@ -105,10 +107,85 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
+  Future<void> _pickNotificationTime(BuildContext context) async {
+    final service = context.read<NotificationService>();
+    final platform = Theme.of(context).platform;
+    if (platform == TargetPlatform.iOS) {
+      TimeOfDay initial = service.scheduledTime;
+      final result = await showCupertinoModalPopup<TimeOfDay>(
+        context: context,
+        builder: (ctx) {
+          TimeOfDay temp = initial;
+          return Container(
+            height: 300,
+            color: Colors.white,
+            child: SafeArea(
+              top: false,
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 44,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('취소'),
+                        ),
+                        CupertinoButton(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          onPressed: () => Navigator.of(ctx).pop(temp),
+                          child: const Text('완료'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: CupertinoDatePicker(
+                      mode: CupertinoDatePickerMode.time,
+                      use24hFormat: true,
+                      initialDateTime: DateTime(
+                        0,
+                        1,
+                        1,
+                        initial.hour,
+                        initial.minute,
+                      ),
+                      onDateTimeChanged: (dt) {
+                        temp = TimeOfDay(hour: dt.hour, minute: dt.minute);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      if (result != null) {
+        await service.updateTime(result);
+      }
+    } else {
+      final picked = await showTimePicker(
+        context: context,
+        initialTime: service.scheduledTime,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child ?? const SizedBox.shrink(),
+        ),
+      );
+      if (picked != null) {
+        await service.updateTime(picked);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final authService = context.watch<AuthService>();
     final user = authService.currentUser;
+    final notificationService = context.watch<NotificationService>();
 
     return Scaffold(
       appBar: AppBar(
@@ -325,7 +402,71 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         ),
                   const SizedBox(height: 16),
                   Text('이메일: ${user.email}'),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  // 알림 설정 섹션
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '알림 설정',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: notificationService.isEnabled,
+                        onChanged: (v) =>
+                            context.read<NotificationService>().setEnabled(v),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: notificationService.isEnabled ? 1 : 0.4,
+                    child: IgnorePointer(
+                      ignoring: !notificationService.isEnabled,
+                      child: Row(
+                        children: [
+                          const Text('알림 시간'),
+                          const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _pickNotificationTime(context),
+                            icon: const Icon(Icons.schedule),
+                            label: Text(
+                              _formatTime(notificationService.scheduledTime),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              await context
+                                  .read<NotificationService>()
+                                  .showTestNotification(
+                                    delay: const Duration(seconds: 5),
+                                  );
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('5초 후 테스트 알림이 도착합니다.'),
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.notifications_active_outlined,
+                            ),
+                            label: const Text('테스트 알림'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                 ],
                 Center(
                   child: Column(
@@ -364,5 +505,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
       ),
     );
+  }
+
+  String _formatTime(TimeOfDay t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m';
   }
 }

@@ -14,6 +14,9 @@ import 'package:lit_goal/ui/home/view_model/home_view_model.dart';
 import 'data/services/auth_service.dart';
 import 'ui/auth/widgets/login_screen.dart';
 import 'ui/auth/widgets/my_page_screen.dart';
+import 'data/services/notification_service.dart';
+import 'ui/book/widgets/book_detail_screen.dart';
+import 'domain/models/book.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,15 +57,40 @@ class MyApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider<NotificationService>(
+          create: (_) => NotificationService()..initialize(),
+        ),
       ],
       child: MaterialApp(
+        navigatorKey: GlobalKey<NavigatorState>(),
         title: 'LitGoal',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
-        home: const AuthWrapper(),
+        home: Builder(
+          builder: (context) {
+            // 알림 탭시 라우팅 핸들러 연결 및 navigatorKey 전달
+            final navKey = (Navigator.of(context)).widget.key
+                as GlobalKey<NavigatorState>?;
+            final notif = context.read<NotificationService>();
+            notif.navigatorKey = navKey;
+            notif.onOpenNotification = (ctx) async {
+              final book = await notif.fetchLatestActiveBook();
+              if (book != null) {
+                Navigator.of(ctx).push(
+                  MaterialPageRoute(
+                    builder: (_) => BookDetailScreen(book: book),
+                  ),
+                );
+              }
+            };
+            // 초기 실행이 알림에서 온 경우 처리
+            notif.handleInitialLaunchRoute();
+            return const AuthWrapper();
+          },
+        ),
       ),
     );
   }
