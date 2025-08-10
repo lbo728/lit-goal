@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../domain/models/book.dart';
-import '../../../data/services/book_service.dart';
 import '../../core/ui/book_image_widget.dart';
 import 'book_detail_screen.dart';
 
@@ -13,42 +13,10 @@ class BookListScreen extends StatefulWidget {
 }
 
 class _BookListScreenState extends State<BookListScreen> {
-  final BookService _bookService = BookService();
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadBooks();
-  }
-
-  Future<void> _loadBooks() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      await _bookService.fetchBooks();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('책 목록을 불러오는데 실패했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('독서 목록'),
@@ -60,31 +28,35 @@ class _BookListScreenState extends State<BookListScreen> {
         ),
         scrolledUnderElevation: 0,
       ),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _buildContentWithRefresh(),
-      ),
-    );
-  }
-
-  Widget _buildContentWithRefresh() {
-    if (_bookService.hasBooks) {
-      return _buildBookList();
-    } else {
-      return RefreshIndicator(
-        onRefresh: _loadBooks,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.5,
-              child: _buildEmptyState(),
+      body: userId == null
+          ? const SizedBox.shrink()
+          : StreamBuilder<List<Map<String, dynamic>>>(
+              stream: Supabase.instance.client
+                  .from('books')
+                  .stream(primaryKey: ['id'])
+                  .eq('user_id', userId)
+                  .order('created_at', ascending: false),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('목록을 불러오지 못했습니다: ${snapshot.error}'),
+                  );
+                }
+                final rows = snapshot.data ?? [];
+                final books = rows.map((e) => Book.fromJson(e)).toList();
+                if (books.isEmpty) {
+                  return _buildEmptyState();
+                }
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: books.map(_buildBookCard).toList(),
+                );
+              },
             ),
-          ],
-        ),
-      );
-    }
+    );
   }
 
   Widget _buildEmptyState() {
@@ -105,18 +77,6 @@ class _BookListScreenState extends State<BookListScreen> {
               color: Colors.grey,
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBookList() {
-    return RefreshIndicator(
-      onRefresh: _loadBooks,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          ..._bookService.books.map((book) => _buildBookCard(book)),
         ],
       ),
     );
