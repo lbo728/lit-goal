@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../domain/models/book.dart';
@@ -26,6 +27,7 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
   final TextEditingController _titleController = TextEditingController();
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  Timer? _debounce;
 
   DateTime selectedDate = DateTime.now();
   DateTime targetDate = DateTime.now().add(const Duration(
@@ -54,7 +56,22 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
     }
 
     _titleController.addListener(() {
-      setState(() {});
+      final text = _titleController.text;
+      if (_selectedBook != null) {
+        setState(() => _selectedBook = null);
+      }
+      _debounce?.cancel();
+      _debounce = Timer(const Duration(milliseconds: 400), () {
+        final query = text.trim();
+        if (query.isEmpty) {
+          setState(() {
+            _searchResults = [];
+            _isSearching = false;
+          });
+          return;
+        }
+        _searchBooks(query);
+      });
     });
   }
 
@@ -62,6 +79,7 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
   void dispose() {
     _titleController.dispose();
     _pageController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -95,8 +113,6 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
   void _selectBook(BookSearchResult book) {
     setState(() {
       _selectedBook = book;
-      _titleController.text = book.title;
-      _searchResults = [];
     });
   }
 
@@ -157,144 +173,175 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
   }
 
   Widget _buildBookTitleInputPage() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 40),
-          TextField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              hintText: '책 이름을 입력해주세요.',
-              hintStyle: TextStyle(
-                color: Colors.grey,
-                fontSize: 16,
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 40),
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  hintText: '책 이름을 입력해주세요.',
+                  hintStyle: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.blue),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                style: const TextStyle(fontSize: 16),
+                onSubmitted: (_) {},
+                onChanged: (_) {},
               ),
-              border: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.blue),
-              ),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-            ),
-            style: const TextStyle(fontSize: 16),
-            onSubmitted: (value) {
-              _searchBooks(value);
-            },
-            onChanged: (value) {
-              if (value.isEmpty) {
-                setState(() {
-                  _searchResults = [];
-                  _selectedBook = null;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 16),
-          if (_isSearching)
-            const Center(
-              child: CircularProgressIndicator(),
-            )
-          else if (_searchResults.isNotEmpty)
-            Expanded(
-              child: ListView.builder(
-                itemCount: _searchResults.length,
-                itemBuilder: (context, index) {
-                  final book = _searchResults[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      leading: book.imageUrl != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: Image.network(
-                                book.imageUrl!,
-                                width: 40,
-                                height: 60,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
+              const SizedBox(height: 16),
+              if (_isSearching)
+                const Center(
+                  child: CircularProgressIndicator(),
+                )
+              else if (_searchResults.isNotEmpty)
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _searchResults.length,
+                    itemBuilder: (context, index) {
+                      final book = _searchResults[index];
+                      final isSelected = _selectedBook != null &&
+                          _isSameBook(_selectedBook!, book);
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          selected: isSelected,
+                          tileColor:
+                              isSelected ? Colors.blue.withOpacity(0.06) : null,
+                          leading: book.imageUrl != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Image.network(
+                                    book.imageUrl!,
                                     width: 40,
                                     height: 60,
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.book, size: 20),
-                                  );
-                                },
-                              ),
-                            )
-                          : Container(
-                              width: 40,
-                              height: 60,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.book, size: 20),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 40,
+                                        height: 60,
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.book, size: 20),
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Container(
+                                  width: 40,
+                                  height: 60,
+                                  color: Colors.grey[200],
+                                  child: const Icon(Icons.book, size: 20),
+                                ),
+                          title: Text(
+                            book.title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
-                      title: Text(
-                        book.title,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            book.author,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (book.totalPages != null)
+                                Text(
+                                  '${book.totalPages}p',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              if (isSelected) ...[
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.blue,
+                                  size: 20,
+                                ),
+                              ],
+                            ],
+                          ),
+                          onTap: () => _selectBook(book),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      );
+                    },
+                  ),
+                )
+              else if (_titleController.text.trim().isNotEmpty)
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      '검색 결과가 없습니다',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
                       ),
-                      subtitle: Text(
-                        book.author,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: book.totalPages != null
-                          ? Text(
-                              '${book.totalPages}p',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            )
-                          : null,
-                      onTap: () => _selectBook(book),
                     ),
-                  );
-                },
-              ),
-            )
-          else
-            const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _titleController.text.isNotEmpty ? _nextPage : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
+                  ),
+                )
+              else
+                const Spacer(),
+            ],
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 16,
+          child: SafeArea(
+            top: false,
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _selectedBook != null ? _nextPage : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                '다음',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
+                child: const Text(
+                  '다음',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -325,7 +372,7 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
             const SizedBox(height: 16),
             Center(
               child: Text(
-                _titleController.text,
+                _selectedBook?.title ?? _titleController.text,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -443,7 +490,7 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
                 onPressed: () async {
                   final userId = Supabase.instance.client.auth.currentUser?.id;
                   final book = Book(
-                    title: _titleController.text,
+                    title: _selectedBook?.title ?? _titleController.text,
                     author: _selectedBook?.author,
                     startDate: selectedDate,
                     targetDate: targetDate,
@@ -513,5 +560,13 @@ class _ReadingStartScreenState extends State<ReadingStartScreen> {
         ),
       ),
     );
+  }
+
+  bool _isSameBook(BookSearchResult a, BookSearchResult b) {
+    final sameTitle = a.title == b.title;
+    final sameAuthor = a.author == b.author;
+    final samePages = (a.totalPages ?? -1) == (b.totalPages ?? -1);
+    final sameImage = (a.imageUrl ?? '') == (b.imageUrl ?? '');
+    return sameTitle && sameAuthor && samePages && sameImage;
   }
 }
