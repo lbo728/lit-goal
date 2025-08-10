@@ -6,31 +6,31 @@ import 'package:supabase_auth_ui/supabase_auth_ui.dart';
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
-  Future<void> _signInWithGoogle(BuildContext context) async {
-    try {
-      await Supabase.instance.client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: kIsWeb ? null : 'litgoal://login-callback',
-        authScreenLaunchMode: LaunchMode.externalApplication,
-      );
-    } on AuthException catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('구글 로그인 실패: ${e.message}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('구글 로그인 오류: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+  // Future<void> _signInWithGoogle(BuildContext context) async {
+  //   try {
+  //     await Supabase.instance.client.auth.signInWithOAuth(
+  //       OAuthProvider.google,
+  //       redirectTo: kIsWeb ? null : 'litgoal://login-callback',
+  //       authScreenLaunchMode: LaunchMode.externalApplication,
+  //     );
+  //   } on AuthException catch (e) {
+  //     if (!context.mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('구글 로그인 실패: ${e.message}'),
+  //         backgroundColor: Colors.red,
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     if (!context.mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('구글 로그인 오류: $e'),
+  //         backgroundColor: Colors.red,
+  //       ),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {

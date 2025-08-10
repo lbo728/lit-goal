@@ -141,13 +141,23 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<UserModel?> fetchCurrentUser() async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return null;
+    final data =
+        await _supabase.from('users').select().eq('id', userId).single();
+    _currentUser = UserModel.fromJson(data);
+    notifyListeners();
+    return _currentUser;
+  }
+
   Future<void> updateNickname(String nickname) async {
     final userId = _currentUser?.id;
     if (userId == null) return;
     await _supabase
         .from('users')
         .update({'nickname': nickname}).eq('id', userId);
-    // await fetchCurrentUser();
+    await fetchCurrentUser();
     notifyListeners();
   }
 
@@ -161,11 +171,14 @@ class AuthService extends ChangeNotifier {
           fileOptions: const FileOptions(upsert: true),
         );
 
-    final url = _supabase.storage.from('avatars').getPublicUrl(filePath);
+    final baseUrl = _supabase.storage.from('avatars').getPublicUrl(filePath);
+    final urlWithBust = '$baseUrl?ts=${DateTime.now().millisecondsSinceEpoch}';
 
-    await _supabase.from('users').update({'avatar_url': url}).eq('id', userId);
+    await _supabase
+        .from('users')
+        .update({'avatar_url': urlWithBust}).eq('id', userId);
 
-    // await fetchCurrentUser();
+    await fetchCurrentUser();
     notifyListeners();
   }
 
